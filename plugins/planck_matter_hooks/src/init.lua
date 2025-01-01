@@ -85,7 +85,7 @@ end
 if ReplicatedStorage:FindFirstChild("Packages") then
 	for _, package in ReplicatedStorage.Packages._Index:GetChildren() do
 		if
-			string.find(package.Name, "matter-ecs_matter")
+			string.find(package.Name, "matter%-ecs_matter")
 			or string.find(package.Name, "evaera_matter")
 		then
 			setHooks(package)
