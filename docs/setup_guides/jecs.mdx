@@ -45,11 +45,12 @@ Check the respective repositories for [Jecs](https://github.com/Ukendio/jecs) an
  
 ```toml title="wally.toml"
 [dependencies]
-Jabby = "alicesaidhi/jabby@0.1.0"
-Jecs = "ukendio/jecs@0.5.1"
-Planck = "yetanotherclown/planck@0.1.0-rc.1"
-PlanckJabby = "yetanotherclown/planck-jabby@0.1.0-rc.1"
-MatterHooks = "yetanotherclown/planck-matter-hooks@0.1.0-rc.1"
+Jabby = "alicesaidhi/jabby@0.2.0-rc.8"
+Jecs = "ukendio/jecs@0.5.3"
+Planck = "yetanotherclown/planck@0.2.0-alpha.2"
+PlanckJabby = "yetanotherclown/planck-jabby@0.1.0-rc.3"
+PlanckRunService = "yetanotherclown/planck-runservice@0.2.0-alpha.2"
+MatterHooks = "yetanotherclown/planck-matter-hooks@0.1.0-rc.3"
 ```
 
 ### Creating the World
@@ -91,9 +92,9 @@ local scheduler = scheduler.new(world)
 return scheduler
 ```
 
-And then let's add the Jabby Plugin
+And then let's add the Jabby and RunService Plugins
 
-```lua {6,7,10} title="ReplicatedStorage/shared/scheduler.luau"
+```lua {6,7,9,10,13,14} title="ReplicatedStorage/shared/scheduler.luau"
 local Planck = require("@packages/Planck")
 local Scheduler = Planck.Scheduler
 
@@ -102,8 +103,12 @@ local world = require("@shared/world")
 local PlanckJabby = require("@packages/PlanckJabby")
 local jabbyPlugin = PlanckJabby.new()
 
+local PlanckRunService = require("@packages/PlanckRunService")
+local runServicePlugin = PlanckRunService.Plugin.new()
+
 local scheduler = scheduler.new(world)
     :addPlugin(jabbyPlugin)
+    :addPlugin(runServicePlugin)
 
 return scheduler
 ```
@@ -189,14 +194,14 @@ This next system will query each frame and print out which entity eats what.
 
 ```lua title="ReplicatedStorage/shared/systems/systemB.luau"
 local Jecs = require("@packages/Jecs")
+local pair = Jecs.pair
+
 local Wildcard = Jecs.Wildcard
 
 local components = require("@shared/components")
 
 local Name = components.Name
 local Eats = components.Eats
-local Apples = components.Apples
-local Oranges = components.Oranges
 
 local function systemB(world)
     for id, amount in world:query(pair(Eats, Wildcard)) do
@@ -204,7 +209,7 @@ local function systemB(world)
         local foodName = world:get(food, Name)
         local entityName = world:get(id, Name)
         
-        print(string.format("%s eats %d %s", entityName, amount, name))
+        print(string.format("%s eats %d %s", entityName, amount, foodName))
     end
 end
 
@@ -231,7 +236,7 @@ Your Startup function is where you first require the world and scheduler modules
 where you would add your systems to the scheduler, and where we will setup Jabby.
 
 ```lua title="ReplicatedStorage/shared/startup.luau"
-local Jabby = require("@shared/Jabby")
+local Jabby = require("@packages/Jabby")
 
 local scheduler = require("@shared/scheduler")
 local world = require("@shared/world")
@@ -239,6 +244,20 @@ local world = require("@shared/world")
 return function(systems)
     scheduler
         :addSystems(systems) -- Assuming you're using SystemTables!
+
+    if RunService:IsClient() then
+		local client = Jabby.obtain_client()
+
+		local function createWidget(_, state: Enum.UserInputState)
+			if state ~= Enum.UserInputState.Begin then
+				return
+			end
+
+			client.spawn_app(client.apps.home, nil)
+		end
+
+		ContextActionService:BindAction("Open Jabby", createWidget, false, Enum.KeyCode.F4)
+	end
 
     Jabby.register({
         applet = Jabby.applets.world,
