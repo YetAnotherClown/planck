@@ -94,6 +94,7 @@ describe("conditions", function()
 		myScheduler:runAll()
 		expect(didRun).toBe(false)
 		bindableEvent:Fire()
+		task.wait()
 
 		myScheduler:runAll()
 		expect(didRun).toBe(true)
@@ -102,6 +103,39 @@ describe("conditions", function()
 		myScheduler:runAll()
 		expect(didRun).toBe(false)
 		bindableEvent:Fire()
+		task.wait()
+
+		myScheduler:runAll()
+		expect(didRun).toBe(true)
+	end)
+
+	test("onEvent in SystemTable", function()
+		expect.assertions(4)
+		local didRun = false
+		local bindableEvent = Instance.new("BindableEvent")
+
+		local function system()
+			didRun = true
+		end
+
+		local myScheduler = Scheduler.new():addSystem({
+			system = system,
+			runConditions = { onEvent(bindableEvent, bindableEvent.Event) },
+		})
+
+		myScheduler:runAll()
+		expect(didRun).toBe(false)
+		bindableEvent:Fire()
+		task.wait()
+
+		myScheduler:runAll()
+		expect(didRun).toBe(true)
+		didRun = false
+
+		myScheduler:runAll()
+		expect(didRun).toBe(false)
+		bindableEvent:Fire()
+		task.wait()
 
 		myScheduler:runAll()
 		expect(didRun).toBe(true)
