@@ -7,10 +7,10 @@
         "$path": "DevPackages"
       },
       "Packages": {
+        "Project": {
+          "$path": "src"
+        },
         "$path": "Packages"
-      },
-      "Project": {
-        "$path": "src"
       }
     },
     "ServerScriptService": {

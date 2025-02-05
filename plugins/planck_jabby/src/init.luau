@@ -31,8 +31,10 @@ local n = 0
 function Plugin:build(scheduler: any)
 	n += 1
 
-	local name = `Planck{n > 0 and ` {n}` or ""}`
-	local jabbyScheduler = Jabby.scheduler.create(name)
+	local identifier = n > 1 and ` #{n}` or ""
+	local name = `Planck{identifier}`
+
+	local jabbyScheduler = Jabby.scheduler.create()
 
 	local systemToId = {}
 
@@ -83,18 +85,55 @@ function Plugin:build(scheduler: any)
 		end
 	)
 
+	local STARTUP_PHASES = { "PreStartup", "Startup", "PostStartup" }
+	local startupSystems = {}
+
 	scheduler:_addHook(scheduler.Hooks.SystemCall, function(args: HookArgs)
+		local id = systemToId[args.system.system]
+
 		return function()
-			jabbyScheduler:run(systemToId[args.system.system], args.nextFn)
+			for _id, _ in startupSystems do
+				jabbyScheduler:set_system_data(_id, {
+					paused = true,
+				})
+			end
+
+			jabbyScheduler:run(id, function()
+				args.nextFn()
+
+				local phase = tostring(args.system.phase)
+				if table.find(STARTUP_PHASES, phase) then
+					startupSystems[id] = true
+				end
+			end)
 		end
 	end)
 
-	table.insert(Jabby.public, jabbyScheduler)
-	Jabby.public.updated = true
+	Jabby.register({
+		applet = Jabby.applets.scheduler,
+		name = name,
+		configuration = {
+			scheduler = jabbyScheduler,
+		},
+	})
 end
 
 function Plugin.new()
 	return setmetatable({}, Plugin)
 end
 
-return Plugin
+type SchedulerLike<U...> = {
+	addPlugin: (
+		self: SchedulerLike<U...>,
+		plugin: Plugin<U...>
+	) -> SchedulerLike<U...>,
+	new: (U...) -> SchedulerLike<U...>,
+	[any]: any,
+}
+
+type Plugin<U...> = {
+	build: (self: Plugin<U...>, scheduler: SchedulerLike<U...>) -> (),
+	new: () -> Plugin<U...>,
+}
+
+return (Plugin :: any) :: Plugin<...any>

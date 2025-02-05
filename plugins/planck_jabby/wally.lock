@@ -4,22 +4,17 @@ registry = "test"
 
 [[package]]
 name = "alicesaidhi/jabby"
-version = "0.2.0-rc.4"
-dependencies = [["jecs", "ukendio/jecs@0.4.0"], ["pebble", "alicesaidhi/pebble@0.1.0-rc.8"], ["t", "corecii/greentea@0.4.10"], ["vide", "centau/vide@0.3.1"]]
+version = "0.2.0-rc.8"
+dependencies = [["jecs", "ukendio/jecs@0.5.3"], ["pebble", "alicesaidhi/pebble@0.1.1"], ["t", "osyrisrblx/t@3.1.1"], ["vide", "centau/vide@0.3.1"]]
 
 [[package]]
 name = "alicesaidhi/pebble"
-version = "0.1.0-rc.8"
+version = "0.1.1"
 dependencies = [["vide", "centau/vide@0.3.1"]]
 
 [[package]]
 name = "centau/vide"
 version = "0.3.1"
-dependencies = []
-
-[[package]]
-name = "corecii/greentea"
-version = "0.4.10"
 dependencies = []
 
 [[package]]
@@ -258,11 +253,16 @@ version = "1.2.7"
 dependencies = [["collections", "jsdotlua/collections@1.2.7"]]
 
 [[package]]
+name = "osyrisrblx/t"
+version = "3.1.1"
+dependencies = []
+
+[[package]]
 name = "ukendio/jecs"
-version = "0.4.0"
+version = "0.5.3"
 dependencies = []
 
 [[package]]
 name = "yetanotherclown/planck-jabby"
-version = "0.1.0"
-dependencies = [["Jabby", "alicesaidhi/jabby@0.2.0-rc.4"], ["Jest", "jsdotlua/jest@3.6.1-rc.2"], ["JestGlobals", "jsdotlua/jest-globals@3.6.1-rc.2"]]
+version = "0.1.0-rc.2"
+dependencies = [["Jabby", "alicesaidhi/jabby@0.2.0-rc.8"], ["Jest", "jsdotlua/jest@3.6.1-rc.2"], ["JestGlobals", "jsdotlua/jest-globals@3.6.1-rc.2"]]

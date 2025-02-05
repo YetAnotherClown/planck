@@ -41,14 +41,6 @@ type PhaseAdd = {
 
 type Middleware = (nextFn: () -> (), eventName: string) -> () -> ()
 
-type Plugin = {
-	getLoop: (self: Plugin) -> {
-		[any]: any,
-	},
-	build: (self: Plugin, scheduler: any) -> (),
-	new: () -> Plugin,
-}
-
 type ConnectionObject = {
 	Disconnect: (() -> ())?,
 	Destroy: (() -> ())?,
@@ -65,17 +57,6 @@ type CustomEvent = {
 } | {
 	connect: (...any) -> ConnectionObject,
 	[any]: any,
-}
-
-type Library = {
-	useDeltaTime: () -> number,
-	useEvent: (
-		instance: Instance | { [string]: CustomEvent } | CustomEvent,
-		event: string | RBXScriptSignal | CustomEvent
-	) -> () -> (number, ...any),
-	useThrottle: (seconds: number, discriminator: any?) -> boolean,
-
-	Plugin: Plugin,
 }
 
 local Plugin = {}
@@ -261,6 +242,21 @@ function Plugin.new(worlds)
 	return plugin
 end
 
-return {
-	Plugin = Plugin :: any,
-} :: Library
+type SchedulerLike<U...> = {
+	addPlugin: (
+		self: SchedulerLike<U...>,
+		plugin: Plugin<U...>
+	) -> SchedulerLike<U...>,
+	new: (U...) -> SchedulerLike<U...>,
+	[any]: any,
+}
+
+type Plugin<U...> = {
+	getLoop: (self: Plugin<U...>) -> {
+		[any]: any,
+	},
+	build: (self: Plugin<U...>, scheduler: SchedulerLike<U...>) -> (),
+	new: () -> Plugin<U...>,
+}
+
+return (Plugin :: any) :: Plugin<...any>

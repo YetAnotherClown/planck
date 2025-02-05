@@ -28,11 +28,6 @@ type SystemsReplace = {
 	old: SystemInfo,
 }
 
-type Plugin = {
-	build: (self: Plugin, scheduler: any) -> (),
-	new: (module: ModuleScript?) -> Plugin,
-}
-
 type ConnectionObject = {
 	Disconnect: (() -> ())?,
 	Destroy: (() -> ())?,
@@ -49,17 +44,6 @@ type CustomEvent = {
 } | {
 	connect: (...any) -> ConnectionObject,
 	[any]: any,
-}
-
-type Library = {
-	useDeltaTime: () -> number,
-	useEvent: (
-		instance: Instance | { [string]: CustomEvent } | CustomEvent,
-		event: string | RBXScriptSignal | CustomEvent
-	) -> () -> (number, ...any),
-	useThrottle: (seconds: number, discriminator: any?) -> boolean,
-
-	Plugin: Plugin,
 }
 
 local topoRuntime
@@ -249,5 +233,34 @@ function Plugin.new(module)
 end
 
 export.Plugin = Plugin
+
+type SchedulerLike<U...> = {
+	addPlugin: (
+		self: SchedulerLike<U...>,
+		plugin: Plugin<U...>
+	) -> SchedulerLike<U...>,
+	new: (U...) -> SchedulerLike<U...>,
+	[any]: any,
+}
+
+type Plugin<U...> = {
+	getLoop: (self: Plugin<U...>) -> {
+		[any]: any,
+	},
+	build: (self: Plugin<U...>, scheduler: SchedulerLike<U...>) -> (),
+	new: (module: ModuleScript?) -> Plugin<U...>,
+}
+
+type Library = {
+	useDeltaTime: () -> number,
+	useEvent: (
+		instance: Instance | { [string]: CustomEvent } | CustomEvent,
+		event: string | RBXScriptSignal | CustomEvent
+	) -> () -> (number, ...any),
+	useThrottle: (seconds: number, discriminator: any?) -> boolean,
+	log: (...any) -> (),
+
+	Plugin: Plugin<...any>,
+}
 
 return export :: Library
