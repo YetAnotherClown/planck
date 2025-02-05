@@ -1,7 +1,7 @@
 ---
 title: Matter Hooks
 description: A Plugin to add the Matter topoRuntime and Hooks to Planck
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 The Matter Hooks plugin provides a way to use the Matter topoRuntime to use any
@@ -16,7 +16,7 @@ You can also use the extended [matter-hooks](<https://github.com/matter-ecs/matt
 
 ```toml title="wally.toml"
 [dependencies]
-MatterHooks = "yetanotherclown/planck-matter-hooks@0.1.0-rc.1"
+MatterHooks = "yetanotherclown/planck-matter-hooks@0.2.0"
 ```
 
 ### Setup and Use

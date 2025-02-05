@@ -7,10 +7,15 @@ type EventInstance = utils.EventInstance
 type Condition = () -> boolean
 
 --- @class Conditions
+---
+--- Conditions can be used in systems or as Run Conditions.
 
 --- @within Conditions
 --- @param time number -- Time in seconds
 --- @return hasTimePassed () -> boolean
+---
+--- A Throttle condition which checks whether the amount of
+--- time given has passed or not.
 local function timePassed(time: number): Condition
 	local storedTime
 
@@ -26,6 +31,8 @@ end
 
 --- @within Conditions
 --- @return hasRanOnce () -> boolean
+---
+--- Checks whether the condition has been called once before
 local function runOnce(): Condition
 	local hasRan = false
 
@@ -44,6 +51,9 @@ type CollectEvents<U...> = () -> () -> (number, U...)
 --- @within Conditions
 --- @return hasNewEvent () -> boolean
 --- @return collectEvents () -> () -> (number, U...)
+---
+--- Checks for any new events and allows for the collection of
+--- those events.
 local function onEvent<U...>(
 	instance: EventInstance | EventLike,
 	event: string | EventLike
@@ -92,6 +102,8 @@ end
 --- @within Conditions
 --- @param condition () -> boolean
 --- @return inverseCondition () -> boolean
+---
+--- Inverses a given condition.
 
 -- selene: allow(unused_variable)
 local function isNot(condition: Condition, ...: any): Condition

@@ -1,7 +1,7 @@
 ---
 title: Matter Debugger
 description: A Plugin to add support for the Matter Debugger to Planck
-sidebar_position: 1
+sidebar_position: 3
 ---
 
 The Matter Debugger plugin provides support for Planck within the Matter
@@ -11,7 +11,7 @@ debugger.
 
 ```toml title="wally.toml"
 [dependencies]
-DebuggerPlugin = "yetanotherclown/planck-matter-debugger@0.1.0-rc.1"
+DebuggerPlugin = "yetanotherclown/planck-matter-debugger@0.2.0"
 ```
 
 ### Setup and Use

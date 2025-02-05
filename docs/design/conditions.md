@@ -169,29 +169,6 @@ local scheduler = Scheduler.new(world)
 This helps us to avoid unnecessarily running systems that only have behavior
 when the Player is alive.
 
-### Input Conditions
-
-We could create conditions based on the input of buttons, like
-
-- inputJustPressed
-- inputJustReleased
-- inputPressed
-- inputToggleActive
-
-An example of a system we could make with this is,
-
-```lua
-local function jump()
-    -- Player performs a jump action
-end
-
-local scheduler = Scheduler.new()
-    :addSystem(jump)
-    :setRunCondition(jump, inputJustPressed(Enum.KeyCode.Space))
-```
-
-Checkout the Bevy [Common Input Conditions](https://docs.rs/bevy/0.13.2/bevy/input/common_conditions/index.html).
-
 ## Run Conditions Are Not Dependencies
 
 Your systems should *not* depend on conditions. In the context of your
