@@ -11,6 +11,8 @@ export interface SystemTable<T extends unknown[]> {
 export type System<T extends unknown[]> = SystemTable<T> | SystemFn<T>;
 
 export class Scheduler<T extends unknown[]> {
+  constructor(...args: T);
+
   addPlugin(plugin: unknown): this;
 
   addSystem(system: System<T>, phase?: Phase): this;
