@@ -1,4 +1,5 @@
-local Jabby = require(script.Parent.Jabby)
+local TS = _G[script]
+local Jabby = TS.import(script, TS.getModule(script, "@rbxts", "jabby").out)
 
 type SystemInfo = {
 	name: string,
