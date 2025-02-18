@@ -1,7 +1,7 @@
 local RunService = game:GetService("RunService")
 
 local TS = _G[script]
-local Planck = TS.import(script, TS.getModule(script, "@rbxts", "planck").out)
+local Planck = TS.import(script, TS.getModule(script, "@rbxts", "planck").src)
 
 local Phase = Planck.Phase
 type Phase = Planck.Phase
