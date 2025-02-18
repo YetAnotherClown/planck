@@ -9,3 +9,5 @@ dist/
 build/
 
 sourcemap.json
+
+node_modules/

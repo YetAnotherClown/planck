@@ -1,4 +1,5 @@
-local Jabby = require(script.Parent.Jabby)
+local TS = _G[script]
+local Jabby = if TS and TS.import then TS.import(script, TS.getModule(script, "@rbxts", "jabby").out) else require(script.Parent.Jabby)
 
 type SystemInfo = {
 	name: string,

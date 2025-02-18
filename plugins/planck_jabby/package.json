@@ -1,0 +1,42 @@
+{
+  "name": "@rbxts/planck-jabby",
+  "version": "0.2.0-rc.1",
+  "description": "A Plugin for Planck, adding support for the Jabby debugger.",
+  "main": "src/init.luau",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YetAnotherClown/planck.git"
+  },
+  "keywords": [],
+  "author": "YetAnotherClown",
+  "contributors": [
+    "YetAnotherClown",
+    "MajestikButter"
+  ],
+  "homepage": "https://github.com/YetAnotherClown/planck",
+  "license": "MIT",
+  "types": "src/index.d.ts",
+  "files": [
+    "src"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@rbxts/compiler-types": "^2.3.0-types.1",
+    "@rbxts/types": "^1.0.781",
+    "@typescript-eslint/eslint-plugin": "^5.8.0",
+    "@typescript-eslint/parser": "^5.8.0",
+    "eslint": "^8.5.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "eslint-plugin-roblox-ts": "^0.0.32",
+    "prettier": "^2.5.1",
+    "roblox-ts": "^3.0.0",
+    "typescript": "^5.4.2"
+  },
+  "dependencies": {
+    "@rbxts/planck": "^0.2.0-rc.1",
+    "@rbxts/jabby": "^0.2.0-rc.8"
+  }
+}

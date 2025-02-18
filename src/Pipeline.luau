@@ -1,6 +1,6 @@
 --!nonstrict
-local DependencyGraph = require("@Project/DependencyGraph")
-local Phase = require("@Project/Phase")
+local DependencyGraph = require("./DependencyGraph")
+local Phase = require("./Phase")
 
 --- @class Pipeline
 ---

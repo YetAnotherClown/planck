@@ -1,9 +1,9 @@
-local Phase = require("@Project/Phase") :: any
-local Pipeline = require("@Project/Pipeline") :: any
-local Scheduler = require("@Project/Scheduler") :: any
+local Phase = require("./src/Phase") :: any
+local Pipeline = require("./src/Pipeline") :: any
+local Scheduler = require("./src/Scheduler") :: any
 
-local conditions = require("@Project/conditions")
-local utils = require("@Project/utils")
+local conditions = require("./src/conditions")
+local utils = require("./src/utils")
 
 type EventLike = utils.EventLike
 type EventInstance = utils.EventInstance
