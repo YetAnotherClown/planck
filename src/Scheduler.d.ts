@@ -7,6 +7,8 @@ export type SystemFn<T extends unknown[]> = (...args: T) => void;
 export interface SystemTable<T extends unknown[]> {
   system: SystemFn<T>;
   phase?: Phase;
+  name?: string;
+  runConditions?: Condition<T>[];
 }
 export type System<T extends unknown[]> = SystemTable<T> | SystemFn<T>;
 
@@ -25,10 +27,10 @@ export class Scheduler<T extends unknown[]> {
 
   insert(phase: Phase): this;
   insert(pipeline: Pipeline): this;
-  insert<T extends EventInstance>(phase: Phase, instance: EventInstance, event: ExtractEvents<T>): this;
-  insert(phase: Phase, event: EventLike): this;
-  insert<T extends EventInstance>(pipeline: Pipeline, instance: EventInstance, event: ExtractEvents<T>): this;
-  insert(pipeline: Pipeline, event: EventLike): this;
+  insert<T extends EventInstance>(phase: Phase, instance: T, event: ExtractEvents<T>): this;
+  insert(phase: Phase, instance: EventLike, event: string): this;
+  insert<T extends EventInstance>(pipeline: Pipeline, instance: T, event: ExtractEvents<T>): this;
+  insert(pipeline: Pipeline, instance: EventLike, event: string): this;
 
   insertAfter(phase: Phase, after: Phase | Pipeline): this;
   insertAfter(pipeline: Pipeline, after: Phase | Pipeline): this;
@@ -40,9 +42,9 @@ export class Scheduler<T extends unknown[]> {
 
   replaceSystem(system: System<T>, newSystem: System<T>): this;
 
-  addRunCondition(system: System<T>, fn: Condition): this;
-  addRunCondition(phase: Phase, fn: Condition): this;
-  addRunCondition(pipeline: Pipeline, fn: Condition): this;
+  addRunCondition(system: System<T>, fn: Condition<T>): this;
+  addRunCondition(phase: Phase, fn: Condition<T>): this;
+  addRunCondition(pipeline: Pipeline, fn: Condition<T>): this;
 
   run(system: Phase): this;
   run(pipeline: Pipeline): this;
