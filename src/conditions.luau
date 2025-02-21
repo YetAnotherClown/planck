@@ -3,6 +3,7 @@ local getConnectFunction = utils.getConnectFunction
 
 type EventLike = utils.EventLike
 type EventInstance = utils.EventInstance
+type ConnectionLike = utils.ConnectionLike
 
 type Condition = () -> boolean
 
@@ -48,28 +49,50 @@ end
 
 type CollectEvents<U...> = () -> () -> (number, U...)
 
+local conditionToCleanupFn = {}
+
+local function cleanupCondition(condition: Condition)
+	local cleanup = conditionToCleanupFn[condition]
+	if cleanup then
+		cleanup()
+		conditionToCleanupFn[condition] = nil
+	end
+end
+
 --- @within Conditions
 --- @return hasNewEvent () -> boolean
 --- @return collectEvents () -> () -> (number, U...)
+--- @return getDisconnectFn () -> () -> ()
 ---
 --- Checks for any new events and allows for the collection of
 --- those events.
 local function onEvent<U...>(
 	instance: EventInstance | EventLike,
 	event: string | EventLike
-): (Condition, CollectEvents<U...>)
+): (Condition, CollectEvents<U...>, () -> () -> ())
 	local connect = getConnectFunction(instance, event)
 	assert(connect, "Event passed to .onEvent is not valid")
 
 	local newEvent = false
 	local queue = {}
 
+	local connection: ConnectionLike?
+
+	local function disconnect()
+		if not connection then
+			return
+		end
+
+		utils.disconnectEvent(connection)
+		connection = nil
+	end
+
 	local function callback(...)
 		newEvent = true
 		table.insert(queue, { ... })
 	end
 
-	connect(callback)
+	connection = connect(callback)
 
 	local function hasNewEvent()
 		if newEvent then
@@ -96,7 +119,13 @@ local function onEvent<U...>(
 		end
 	end
 
-	return hasNewEvent, collectEvents
+	local function getDisconnectFn()
+		return disconnect
+	end
+
+	conditionToCleanupFn[hasNewEvent] = disconnect
+
+	return hasNewEvent, collectEvents, getDisconnectFn
 end
 
 --- @within Conditions
@@ -117,4 +146,6 @@ return {
 	runOnce = runOnce,
 	onEvent = onEvent,
 	isNot = isNot,
+
+	cleanupCondition = cleanupCondition,
 }

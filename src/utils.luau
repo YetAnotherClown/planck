@@ -68,7 +68,44 @@ export type EventInstance = Instance | {
 	[any]: EventLike,
 }
 
-type ConnectFn<U...> = (callback: (U...) -> ()) -> ()
+export type ConnectionLike = RBXScriptConnection | {
+	disconnect: (self: ConnectionLike, ...any) -> any,
+	[any]: any,
+} | {
+	Disconnect: (self: ConnectionLike, ...any) -> any,
+	[any]: any,
+} | {
+	destroy: (self: ConnectionLike, ...any) -> any,
+	[any]: any,
+} | {
+	Destroy: (self: ConnectionLike, ...any) -> any,
+	[any]: any,
+} | (...any) -> any
+
+export type ConnectFn<U...> = (callback: (U...) -> ()) -> ConnectionLike
+
+local EVENT_DISCONNECT_METHODS =
+	{ "disconnect", "Disconnect", "destroy", "Destroy" }
+
+local function disconnectEvent(connection: ConnectionLike)
+	if type(connection) == "function" then
+		connection()
+		return
+	elseif typeof(connection) == "RBXScriptConnection" then
+		connection:Disconnect()
+		return
+	elseif type(connection) == "table" then
+		for _, method in EVENT_DISCONNECT_METHODS do
+			if
+				connection[method]
+				and type(connection[method]) == "function"
+			then
+				connection[method](connection)
+				return
+			end
+		end
+	end
+end
 
 -- This function is inspired by useEvent in Matter, a library by evaera (https://github.com/evaera)
 -- License: Copyright (c) 2021 Eryn L. K., MIT License
@@ -89,7 +126,7 @@ local function getConnectFunction<U...>(
 		return eventInstance
 	elseif typeof(eventInstance) == "RBXScriptSignal" then
 		return function(callback)
-			eventInstance:Connect(callback)
+			return eventInstance:Connect(callback)
 		end
 	end
 
@@ -100,7 +137,7 @@ local function getConnectFunction<U...>(
 			end
 
 			return function(callback)
-				eventInstance[method](eventInstance, callback)
+				return eventInstance[method](eventInstance, callback)
 			end
 		end
 	end
@@ -120,4 +157,5 @@ return {
 	getEventIdentifier = getEventIdentifier,
 	isValidEvent = isValidEvent,
 	getConnectFunction = getConnectFunction,
+	disconnectEvent = disconnectEvent,
 }

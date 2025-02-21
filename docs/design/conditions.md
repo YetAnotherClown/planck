@@ -92,7 +92,7 @@ local onEvent = Planck.onEvent
 
 local scheduler = Scheduler.new(world)
     -- Run out system only when there is a new Player
-    :addRunCondition(systemA, onEvent(Players.PlayerAdded))
+    :addRunCondition(systemA, onEvent(Players, "PlayerAdded"))
 ```
 
 It is important to note that we don't actually collect the events using
@@ -104,7 +104,7 @@ local Players = game:GetService("Players")
 local Planck = require("@packages/Planck")
 
 local onEvent = Planck.onEvent
-local hasNewEvent, collectEvents = onEvent(Players.PlayerAdded)
+local hasNewEvent, collectEvents = onEvent(Players, "PlayerAdded")
 
 local function systemA()
     for i, player in collectEvents() do
@@ -117,6 +117,25 @@ return {
     runConditions = { hasNewEvent }
 }
 ```
+
+:::tip[Cleaning Up Events]
+If you would like to cleanup the event connection that the `onEvent` condition uses,
+you can get the disconnect function like so.
+
+```lua
+local Planck = require("@packages/Planck")
+
+local onEvent = Planck.onEvent
+local hasNewEvent, collectEvents, getDisconnectFn = onEvent(Players, "PlayerAdded")
+
+local disconnect = getDisconnectFn()
+disconnect() -- Event is no longer connected
+```
+
+If you use `scheduler:removeSystem()` to remove a system, all of it's conditions
+will be cleaned up with it, so long as the condition is not being used for any
+other system, phase, or pipeline.
+:::
 
 ### Not
 
@@ -131,7 +150,7 @@ local isNot = Planck.isNot
 
 local scheduler = Scheduler.new(world)
     -- Run our system only when there is a new Player
-    :addRunCondition(systemA, isNot(onEvent(Players.PlayerAdded)))
+    :addRunCondition(systemA, isNot(onEvent(Players, "PlayerAdded")))
 ```
 
 ## Ideas for Conditions

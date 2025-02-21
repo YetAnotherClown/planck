@@ -38,6 +38,7 @@ export type Pipeline = {
 
 type Plugin<U...> = {
 	build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
+	cleanup: ((self: Plugin<U...>) -> ())?,
 	[any]: any,
 }
 
@@ -122,6 +123,8 @@ export type Scheduler<U...> = {
 		pipeline: Pipeline,
 		after: Phase | Pipeline
 	) -> Scheduler<U...>),
+
+	cleanup: (self: Scheduler<U...>) -> (),
 
 	new: (U...) -> Scheduler<U...>,
 }
