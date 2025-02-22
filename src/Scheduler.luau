@@ -134,11 +134,14 @@ function Scheduler:runSystem(system)
 
 	local function systemCall()
 		local function noYield()
-			local success, err = coroutine.resume(self._thread, function()
-				system(table.unpack(self._vargs))
+			local success, err
+			coroutine.resume(self._thread, function()
+				success, err = xpcall(system, function(e)
+					return debug.traceback(e)
+				end, table.unpack(self._vargs))
 			end)
 
-			if not success then
+			if success == false then
 				didYield = true
 				table.insert(systemInfo.logs, err)
 				hooks.systemError(self, systemInfo, err)
@@ -147,12 +150,16 @@ function Scheduler:runSystem(system)
 
 			if self._yielded then
 				didYield = true
-				local trace, line = debug.info(systemInfo.system, "sl")
-				table.insert(systemInfo.logs, `{trace}:{line}: System yielded`)
+				local source, line = debug.info(self._thread, 1, "sl")
+				local errMessage = `{source}:{line}: System yielded`
+				table.insert(
+					systemInfo.logs,
+					debug.traceback(self._thread, errMessage, 2)
+				)
 				hooks.systemError(
 					self,
 					systemInfo,
-					`{trace}:{line}: System yielded`
+					debug.traceback(self._thread, errMessage, 2)
 				)
 			end
 		end
