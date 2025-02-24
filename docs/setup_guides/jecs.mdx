@@ -74,7 +74,7 @@ Next, we'll create a module called `scheduler.luau` where we create and export o
 local Planck = require("@packages/Planck")
 local Scheduler = Planck.Scheduler
 
-local scheduler = scheduler.new()
+local scheduler = Scheduler.new()
 
 return scheduler
 ```
@@ -87,7 +87,7 @@ local Scheduler = Planck.Scheduler
 
 local world = require("@shared/world")
 
-local scheduler = scheduler.new(world)
+local scheduler = Scheduler.new(world)
 
 return scheduler
 ```
@@ -106,7 +106,7 @@ local jabbyPlugin = PlanckJabby.new()
 local PlanckRunService = require("@packages/PlanckRunService")
 local runServicePlugin = PlanckRunService.Plugin.new()
 
-local scheduler = scheduler.new(world)
+local scheduler = Scheduler.new(world)
     :addPlugin(jabbyPlugin)
     :addPlugin(runServicePlugin)
 
@@ -128,7 +128,7 @@ local jabbyPlugin = PlanckJabby.new()
 local MatterHooks = require("@packages/MatterHooks")
 local hooksPlugin = MatterHooks.new()
 
-local scheduler = scheduler.new(world)
+local scheduler = Scheduler.new(world)
     :addPlugin(jabbyPlugin)
     :addPlugin(hooksPlugin)
 
