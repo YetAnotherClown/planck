@@ -248,6 +248,7 @@ type Plugin<U...> = {
 		[any]: any,
 	},
 	build: (self: Plugin<U...>, scheduler: SchedulerLike<U...>) -> (),
+	cleanup: ((self: Plugin<U...>) -> ())?,
 	new: (module: ModuleScript?) -> Plugin<U...>,
 }
 
