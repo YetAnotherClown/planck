@@ -1,9 +1,11 @@
 local utils = require("@Project/utils")
 local getConnectFunction = utils.getConnectFunction
 
-type EventLike = utils.EventLike
-type EventInstance = utils.EventInstance
+type GenericTable = utils.GenericTable
+type SignalLike<U...> = utils.SignalLike<U...>
 type ConnectionLike = utils.ConnectionLike
+type ConnectFn<T, U...> = utils.ConnectFn<T, U...>
+type Callback<U...> = utils.Callback<U...>
 
 type Condition = () -> boolean
 
@@ -59,16 +61,52 @@ local function cleanupCondition(condition: Condition)
 	end
 end
 
+type GetDisconnectFn = () -> () -> ()
+
+type OnEventFn =
+	-- RBXScriptSignal & nil
+	(<U...>(
+		RBXScriptSignal<U...>
+	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	-- Instance & RBXScriptSignal
+	-- Instance & string
+	& (<U...>(
+		Instance,
+		RBXScriptSignal<U...> | string
+	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	-- SignalLike & nil
+	& (<U...>(
+		SignalLike<U...>
+	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	-- table & string
+	& (<U...>(
+		GenericTable,
+		string
+	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	-- table & connectable method
+	& (<T, U...>(
+		GenericTable,
+		(GenericTable, Callback<U...>, ...any) -> T?
+	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	-- connectable function
+	& (<T, U...>(
+		(Callback<U...>, ...any) -> T?
+	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+
 --- @within Conditions
+--- @param instance RBXScriptSignal | Instance | SignalLike<...any> | GenericTable | ((Callback<U...>,...any) -> ...any)
+--- @param event (RBXScriptSignal | string | (...any) -> ())?
 --- @return hasNewEvent () -> boolean
 --- @return collectEvents () -> () -> (number, U...)
 --- @return getDisconnectFn () -> () -> ()
 ---
 --- Checks for any new events and allows for the collection of
---- those events.
+--- those events.\
+--- \
+--- Read [OnEvent](../docs/design/conditions#on-event) for more information.
 local function onEvent<U...>(
-	instance: EventInstance | EventLike,
-	event: string | EventLike
+	instance,
+	event
 ): (Condition, CollectEvents<U...>, () -> () -> ())
 	local connect = getConnectFunction(instance, event)
 	assert(connect, "Event passed to .onEvent is not valid")
@@ -144,7 +182,7 @@ end
 return {
 	timePassed = timePassed,
 	runOnce = runOnce,
-	onEvent = onEvent,
+	onEvent = onEvent :: OnEventFn,
 	isNot = isNot,
 
 	cleanupCondition = cleanupCondition,
