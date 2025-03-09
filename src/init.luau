@@ -41,7 +41,10 @@ export type Pipeline = {
 
 type Plugin<U...> = {
 	build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
-	cleanup: ((self: Plugin<U...>) -> ())?,
+	[any]: any,
+} | {
+	build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
+	cleanup: (self: Plugin<U...>) -> (),
 	[any]: any,
 }
 
@@ -135,17 +138,17 @@ export type Scheduler<U...> = {
 		) -> Scheduler<U...>)
 		-- table & connectable method
 		& (<T>(
-		self: Scheduler<U...>,
+			self: Scheduler<U...>,
 			dependency: Phase | Pipeline,
 			instance: GenericTable,
 			connectMethod: (GenericTable, Callback<U...>, ...any) -> T
 		) -> Scheduler<U...>)
 		-- connectable function
 		& (<T>(
-		self: Scheduler<U...>,
+			self: Scheduler<U...>,
 			dependency: Phase | Pipeline,
 			connectFn: (Callback<U...>, ...any) -> T
-	) -> Scheduler<U...>),
+		) -> Scheduler<U...>),
 
 	insertAfter: ((
 		self: Scheduler<U...>,
