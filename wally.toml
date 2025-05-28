@@ -1,0 +1,18 @@
+[package]
+name = "yetanotherclown/planck"
+description = "An Agnostic Scheduler for ECS"
+license = "MIT"
+authors = ["YetAnotherClown"]
+version = "0.2.0-rc.1"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+homepage = "https://yetanotherclown.github.io/planck"
+repository = "https://github.com/yetanotherclown/planck"
+private = true
+
+[dependencies]
+Jabby = "alicesaidhi/jabby@0.2.3"
+
+[dev-dependencies]
+Jest = "jsdotlua/jest@3.6.1-rc.2"
+JestGlobals = "jsdotlua/jest-globals@3.6.1-rc.2"

@@ -1,19 +1,6 @@
 {
-  "name": "PlanckMatterHooks",
-  "tree": {
-    "$className": "DataModel",
-    "ReplicatedStorage": {
-      "DevPackages": {
-        "$path": "DevPackages"
-      },
-      "Project": {
-        "$path": "src"
-      }
-    },
-    "ServerScriptService": {
-      "run-tests": {
-        "$path": "scripts/run-tests.server.luau"
-      }
-    }
-  }
+	"name": "PlanckMatterHooks",
+	"tree": {
+		"$path": "src"
+	}
 }

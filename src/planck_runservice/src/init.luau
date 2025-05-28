@@ -1,7 +1,6 @@
 local RunService = game:GetService("RunService")
 
-local TS = _G[script]
-local Planck = if TS and TS.import then TS.import(script, TS.getModule(script, "@rbxts", "planck").src) else require(script.Parent.Planck)
+local Planck = require(script.Parent.Planck)
 
 local Phase = Planck.Phase
 type Phase = Planck.Phase

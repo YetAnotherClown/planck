@@ -1,6 +1,6 @@
-local JestGlobals = require("@DevPackages/JestGlobals")
+local JestGlobals = require(script.Parent.Parent.Parent.Parent.DevPackages.JestGlobals)
 
-local Planck = require("@Project")
+local Planck = require(script.Parent.Parent)
 
 local Phase = Planck.Phase
 local Scheduler = Planck.Scheduler
@@ -11,7 +11,7 @@ local test = JestGlobals.test
 
 describe("topoRuntime", function()
 	test("useDeltaTime", function()
-		local matterHooks = require("@Plugins/planck_matter_hooks/src")
+		local matterHooks = require(script.Parent.Parent.Parent.PlanckMatterHooks)
 		local useDeltaTime = matterHooks.useDeltaTime
 		expect.assertions(1)
 
@@ -29,7 +29,7 @@ describe("topoRuntime", function()
 	end)
 
 	test("useThrottle", function()
-		local matterHooks = require("@Plugins/planck_matter_hooks/src")
+		local matterHooks = require(script.Parent.Parent.Parent.PlanckMatterHooks)
 		local useThrottle = matterHooks.useThrottle
 		expect.assertions(1)
 

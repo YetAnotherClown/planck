@@ -1,6 +1,6 @@
-local JestGlobals = require("@DevPackages/JestGlobals")
+local JestGlobals = require(script.Parent.Parent.Parent.Parent.DevPackages.JestGlobals)
 
-local Planck = require("@Project")
+local Planck = require(script.Parent.Parent)
 
 local Phase = Planck.Phase
 local Scheduler = Planck.Scheduler

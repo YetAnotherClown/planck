@@ -1,22 +1,6 @@
 {
-  "name": "PlanckJabby",
-  "tree": {
-    "$className": "DataModel",
-    "ReplicatedStorage": {
-      "DevPackages": {
-        "$path": "DevPackages"
-      },
-      "Packages": {
-        "Project": {
-          "$path": "src"
-        },
-        "$path": "Packages"
-      }
-    },
-    "ServerScriptService": {
-      "run-tests": {
-        "$path": "scripts/run-tests.server.luau"
-      }
-    }
-  }
+	"name": "PlanckJabby",
+	"tree": {
+		"$path": "src"
+	}
 }
