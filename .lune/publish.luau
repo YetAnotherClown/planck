@@ -3,6 +3,7 @@ local process = require("@lune/process")
 local regex = require("@lune/regex")
 local serde = require("@lune/serde")
 local stdio = require("@lune/stdio")
+local task = require("@lune/task")
 
 local DependencyGraph = require("../src/planck/src/DependencyGraph")
 
@@ -247,8 +248,11 @@ elseif not dryRun then
 	end
 end
 
-for _, name in graph:getOrderedList() do
+for i, name in graph:getOrderedList() do
 	publishPackage(nameToPackage[name], version, dryRun)
+	if i ~= #packages then
+		task.wait(2)
+	end
 end
 
 if dryRun then
