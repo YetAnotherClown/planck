@@ -1,14 +1,16 @@
-local JestGlobals = require(script.Parent.Parent.Parent.Parent.DevPackages.JestGlobals)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Planck = require(script.Parent.Parent.Parent.Planck)
-local PlanckRunService = require(script.Parent.Parent)
+local Planck = require(ReplicatedStorage.Packages.Planck)
+local PlanckRunService = require(ReplicatedStorage.Packages.PlanckRunService)
 
 local Phase = Planck.Phase
 local Scheduler = Planck.Scheduler
 
-local test = JestGlobals.test
+local JestGlobals = require(ReplicatedStorage.DevPackages.JestGlobals)
+
 local describe = JestGlobals.describe
 local expect = JestGlobals.expect
+local test = JestGlobals.test
 
 describe("Planck RunService", function()
 	test("default phase works", function(_, done)

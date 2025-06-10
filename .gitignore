@@ -9,6 +9,9 @@ dist/
 build/
 
 sourcemap.json
+globalTypes.d.luau
 
 node_modules/
 out/
+package_tarballs/
+builds/

@@ -1,12 +1,14 @@
-local JestGlobals = require(script.Parent.Parent.Parent.Parent.DevPackages.JestGlobals)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Planck = require(script.Parent.Parent)
-local Scheduler = Planck.Scheduler
+local Scheduler = require("../Scheduler")
+local conditions = require("../conditions")
+ 
+local isNot = conditions.isNot
+local runOnce = conditions.runOnce
+local timePassed = conditions.timePassed
+local onEvent = conditions.onEvent
 
-local isNot = Planck.isNot
-local runOnce = Planck.runOnce
-local timePassed = Planck.timePassed
-local onEvent = Planck.onEvent
+local JestGlobals = require(ReplicatedStorage.DevPackages.JestGlobals)
 
 local describe = JestGlobals.describe
 local expect = JestGlobals.expect
@@ -21,7 +23,7 @@ describe("conditions", function()
 
 		local bool = false
 
-		local function condition()
+		local function condition() 
 			return bool
 		end
 

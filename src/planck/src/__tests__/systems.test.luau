@@ -1,9 +1,9 @@
-local JestGlobals = require(script.Parent.Parent.Parent.Parent.DevPackages.JestGlobals)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Planck = require(script.Parent.Parent)
+local Phase = require("../Phase")
+local Scheduler = require("../Scheduler")
 
-local Phase = Planck.Phase
-local Scheduler = Planck.Scheduler
+local JestGlobals = require(ReplicatedStorage.DevPackages.JestGlobals)
 
 local describe = JestGlobals.describe
 local expect = JestGlobals.expect

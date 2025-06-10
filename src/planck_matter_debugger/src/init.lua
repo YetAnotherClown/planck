@@ -1,4 +1,4 @@
-local rollingAverage = require(script.rollingAverage)
+local rollingAverage = require("@self/rollingAverage.luau")
 
 type SystemInfo = {
 	name: string,

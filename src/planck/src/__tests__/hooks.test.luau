@@ -1,9 +1,9 @@
-local JestGlobals = require(script.Parent.Parent.Parent.Parent.DevPackages.JestGlobals)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Planck = require(script.Parent.Parent)
+local Phase = require("../Phase")
+local Scheduler = require("../Scheduler")
 
-local Phase = Planck.Phase
-local Scheduler = Planck.Scheduler
+local JestGlobals = require(ReplicatedStorage.DevPackages.JestGlobals)
 
 local describe = JestGlobals.describe
 local expect = JestGlobals.expect
@@ -11,7 +11,7 @@ local test = JestGlobals.test
 
 describe("topoRuntime", function()
 	test("useDeltaTime", function()
-		local matterHooks = require(script.Parent.Parent.Parent.PlanckMatterHooks)
+		local matterHooks = require(ReplicatedStorage.Packages.PlanckMatterHooks)
 		local useDeltaTime = matterHooks.useDeltaTime
 		expect.assertions(1)
 
@@ -29,7 +29,7 @@ describe("topoRuntime", function()
 	end)
 
 	test("useThrottle", function()
-		local matterHooks = require(script.Parent.Parent.Parent.PlanckMatterHooks)
+		local matterHooks = require(ReplicatedStorage.Packages.PlanckMatterHooks)
 		local useThrottle = matterHooks.useThrottle
 		expect.assertions(1)
 

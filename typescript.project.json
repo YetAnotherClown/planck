@@ -4,7 +4,7 @@
 		"$className": "DataModel",
 		"ReplicatedStorage": {
 			"Packages": {
-				"$path": "src",
+				"$path": "out",
 				"Jabby": {
 					"$path": "Packages/Jabby.lua"
 				},

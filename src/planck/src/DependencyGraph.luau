@@ -128,8 +128,12 @@ function DependencyGraph:insertBefore(node, beforeNode)
 		error("Node not found in DependencyGraph:insertBefore(_, unknown)")
 	end
 
-	table.insert(self.nodes, node)
-	local j = #self.nodes
+	local j = table.find(self.nodes, node)
+	if not j then
+	    table.insert(self.nodes, node)
+	    j = #self.nodes
+	end
+
 	local i = table.find(self.nodes, beforeNode)
 
 	self.matrix:extend()
@@ -143,9 +147,12 @@ function DependencyGraph:insertAfter(node, afterNode)
 		error("Node not found in DependencyGraph:insertAfter(_, unknown)")
 	end
 
-	table.insert(self.nodes, node)
+	local j = table.find(self.nodes, node)
+	if not j then
+	    table.insert(self.nodes, node)
+	    j = #self.nodes
+	end
 
-	local j = #self.nodes
 	local i = table.find(self.nodes, afterNode)
 
 	self.matrix:extend()

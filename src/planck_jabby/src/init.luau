@@ -1,5 +1,5 @@
 local Jabby = require(script.Parent.Jabby)
-
+ 
 type SystemInfo = {
 	name: string,
 	phase: any,
