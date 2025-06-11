@@ -1,6 +1,18 @@
 local AdjacencyMatrix = {}
 AdjacencyMatrix.__index = AdjacencyMatrix
 
+export type AdjacencyMatrix = {
+	matrix: { { number } },
+	length: number,
+	width: number,
+
+	extend: (self: AdjacencyMatrix) -> (),
+	setEdge: (self: AdjacencyMatrix, i: number, j: number, v: number) -> (),
+	toAdjacencyList: (self: AdjacencyMatrix) -> { { number } },
+	topologicalSort: (self: AdjacencyMatrix) -> { number }?,
+	new: () -> AdjacencyMatrix,
+}
+
 function AdjacencyMatrix:__tostring()
 	local s = "\n"
 
@@ -97,13 +109,34 @@ function AdjacencyMatrix:topologicalSort(): { number }?
 	return result
 end
 
-function AdjacencyMatrix.new()
+function AdjacencyMatrix.new(): AdjacencyMatrix
 	return setmetatable({
 		matrix = {},
 		length = 0,
 		width = 0,
-	}, AdjacencyMatrix)
+	}, AdjacencyMatrix) :: any
 end
+
+export type DependencyGraph<T> = {
+	nodes: { T },
+	matrix: AdjacencyMatrix,
+	length: number,
+	width: number,
+
+	getOrderedList: (self: DependencyGraph<T>) -> { T }?,
+	insert: (self: DependencyGraph<T>, node: T) -> DependencyGraph<T>,
+	insertAfter: (
+		self: DependencyGraph<T>,
+		node: T,
+		afterNode: T
+	) -> DependencyGraph<T>,
+	insertBefore: (
+		self: DependencyGraph<T>,
+		node: T,
+		beforeNode: T
+	) -> DependencyGraph<T>,
+	new: () -> DependencyGraph<T>,
+}
 
 local DependencyGraph = {}
 DependencyGraph.__index = DependencyGraph
@@ -130,8 +163,8 @@ function DependencyGraph:insertBefore(node, beforeNode)
 
 	local j = table.find(self.nodes, node)
 	if not j then
-	    table.insert(self.nodes, node)
-	    j = #self.nodes
+		table.insert(self.nodes, node)
+		j = #self.nodes
 	end
 
 	local i = table.find(self.nodes, beforeNode)
@@ -149,8 +182,8 @@ function DependencyGraph:insertAfter(node, afterNode)
 
 	local j = table.find(self.nodes, node)
 	if not j then
-	    table.insert(self.nodes, node)
-	    j = #self.nodes
+		table.insert(self.nodes, node)
+		j = #self.nodes
 	end
 
 	local i = table.find(self.nodes, afterNode)
@@ -175,13 +208,13 @@ function DependencyGraph:insert(node)
 	return self
 end
 
-function DependencyGraph.new()
+function DependencyGraph.new<T>(): DependencyGraph<T>
 	return setmetatable({
 		nodes = {},
 		matrix = AdjacencyMatrix.new(),
 		length = 0,
 		width = 0,
-	}, DependencyGraph)
+	}, DependencyGraph) :: any
 end
 
 return DependencyGraph

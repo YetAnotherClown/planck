@@ -214,6 +214,9 @@ for _, package in packages do
 	end
 end
 
+local orderedList = graph:getOrderedList()
+assert(orderedList, "Cycle detected in dependencies")
+
 if dryRun then
 	stdio.write(
 		`{stdio.color("yellow")}`
@@ -235,7 +238,7 @@ elseif not dryRun then
 	local prompt = `Are you sure you want to publish the following packages:`
 	prompt ..= `{stdio.style("reset")}{stdio.style("dim")}`
 
-	for _, name in graph:getOrderedList() do
+	for _, name in orderedList do
 		local package = nameToPackage[name]
 		prompt ..= `\n{string.rep(" ", 4)}{name}@{package.version} -> {name}@{version}`
 	end
@@ -248,7 +251,7 @@ elseif not dryRun then
 	end
 end
 
-for i, name in graph:getOrderedList() do
+for i, name in orderedList do
 	publishPackage(nameToPackage[name], version, dryRun)
 	if i ~= #packages then
 		task.wait(2)
