@@ -1,20 +1,25 @@
 {
-	"name": "Planck",
-	"tree": {
-		"$className": "DataModel",
-		"ReplicatedStorage": {
-			"Packages": {
-				"$path": "src",
-				"Jabby": {
-					"$path": "Packages/Jabby.lua"
-				},
-				"_Index": {
-					"$path": "Packages/_Index"
-				}
-			},
-			"DevPackages": {
-				"$path": "DevPackages"
-			}
-		}
-	}
+  "name": "Planck",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "run-tests": {
+        "$path": "src/run-tests.server.luau"
+      }
+    },
+    "ReplicatedStorage": {
+      "Packages": {
+        "$path": "src",
+        "Jabby": {
+          "$path": "Packages/Jabby.lua"
+        },
+        "_Index": {
+          "$path": "Packages/_Index"
+        }
+      },
+      "DevPackages": {
+        "$path": "DevPackages"
+      }
+    }
+  }
 }

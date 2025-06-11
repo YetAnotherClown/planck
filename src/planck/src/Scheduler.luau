@@ -1,11 +1,11 @@
 --!nonstrict
-local DependencyGraph = require("./DependencyGraph")
-local Pipeline = require("./Pipeline")
-local Phase = require("./Phase")
+local DependencyGraph = require(script.Parent.DependencyGraph)
+local Pipeline = require(script.Parent.Pipeline)
+local Phase = require(script.Parent.Phase)
 
-local utils = require("./utils")
-local hooks = require("./hooks")
-local conditions = require("./conditions")
+local utils = require(script.Parent.utils)
+local hooks = require(script.Parent.hooks)
+local conditions = require(script.Parent.conditions)
 
 local getSystem = utils.getSystem
 local getSystemName = utils.getSystemName

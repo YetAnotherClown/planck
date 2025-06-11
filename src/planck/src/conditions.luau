@@ -1,4 +1,4 @@
-local utils = require("./utils")
+local utils = require(script.Parent.utils)
 local getConnectFunction = utils.getConnectFunction
 
 type EventLike = utils.EventLike

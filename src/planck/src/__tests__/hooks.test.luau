@@ -1,7 +1,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Phase = require("../Phase")
-local Scheduler = require("../Scheduler")
+local root = script.Parent.Parent
+
+local Phase = require(root.Phase)
+local Scheduler = require(root.Scheduler)
 
 local JestGlobals = require(ReplicatedStorage.DevPackages.JestGlobals)
 
@@ -11,7 +13,8 @@ local test = JestGlobals.test
 
 describe("topoRuntime", function()
 	test("useDeltaTime", function()
-		local matterHooks = require(ReplicatedStorage.Packages.PlanckMatterHooks)
+		local matterHooks =
+			require(ReplicatedStorage.Packages.PlanckMatterHooks)
 		local useDeltaTime = matterHooks.useDeltaTime
 		expect.assertions(1)
 
@@ -29,7 +32,8 @@ describe("topoRuntime", function()
 	end)
 
 	test("useThrottle", function()
-		local matterHooks = require(ReplicatedStorage.Packages.PlanckMatterHooks)
+		local matterHooks =
+			require(ReplicatedStorage.Packages.PlanckMatterHooks)
 		local useThrottle = matterHooks.useThrottle
 		expect.assertions(1)
 

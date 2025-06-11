@@ -1,7 +1,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Phase = require("../Phase")
-local Scheduler = require("../Scheduler")
+local root = script.Parent.Parent
+
+local Phase = require(root.Phase)
+local Scheduler = require(root.Scheduler)
 
 local JestGlobals = require(ReplicatedStorage.DevPackages.JestGlobals)
 

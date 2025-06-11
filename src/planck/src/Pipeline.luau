@@ -1,6 +1,6 @@
 --!nonstrict
-local DependencyGraph = require("./DependencyGraph")
-local Phase = require("./Phase")
+local DependencyGraph = require(script.Parent.DependencyGraph)
+local Phase = require(script.Parent.Phase)
 
 --- @class Pipeline
 ---

@@ -1,8 +1,10 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Scheduler = require("../Scheduler")
-local conditions = require("../conditions")
- 
+local root = script.Parent.Parent
+
+local Scheduler = require(root.Scheduler)
+local conditions = require(root.conditions)
+
 local isNot = conditions.isNot
 local runOnce = conditions.runOnce
 local timePassed = conditions.timePassed
@@ -23,7 +25,7 @@ describe("conditions", function()
 
 		local bool = false
 
-		local function condition() 
+		local function condition()
 			return bool
 		end
 

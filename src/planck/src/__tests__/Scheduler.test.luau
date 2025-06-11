@@ -2,9 +2,11 @@
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Phase = require("../Phase")
-local Scheduler = require("../Scheduler")
-local Pipeline = require("../Pipeline")
+local root = script.Parent.Parent
+
+local Phase = require(root.Phase)
+local Scheduler = require(root.Scheduler)
+local Pipeline = require(root.Pipeline)
 
 local JestGlobals = require(ReplicatedStorage.DevPackages.JestGlobals)
 

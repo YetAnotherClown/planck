@@ -1,9 +1,9 @@
-local Phase = require("./src/Phase") :: any
-local Pipeline = require("./src/Pipeline") :: any
-local Scheduler = require("./src/Scheduler") :: any
+local Phase = require(script.Phase) :: any
+local Pipeline = require(script.Pipeline) :: any
+local Scheduler = require(script.Scheduler) :: any
 
-local conditions = require("./src/conditions")
-local utils = require("./src/utils")
+local conditions = require(script.conditions)
+local utils = require(script.utils)
 
 type EventLike = utils.EventLike
 type EventInstance = utils.EventInstance
