@@ -1,38 +1,33 @@
 local process = require("@lune/process")
 local stdio = require("@lune/stdio")
-local fs = require("@lune/fs")
+local task = require("@lune/task")
+
+local COMMANDS = {
+	"wally install",
+	"rojo sourcemap default.project.json -o sourcemap.json",
+	"wally-package-types --sourcemap sourcemap.json Packages/",
+	"wally-package-types --sourcemap sourcemap.json DevPackages/",
+}
 
 local function exec(command: string)
-    local args = string.split(command, " ")
-    local program = table.remove(args, 1) :: string
+	local args = string.split(command, " ")
+	local program = table.remove(args, 1) :: string
 
-    return process.exec(program, args, {
-        shell = true
-    })
+	return process.exec(program, args, {
+		shell = true,
+	})
 end
 
-do
-    local result = exec("wally install")
+for _, command in COMMANDS do
+	stdio.write(`\n> {command}\n`)
+	local result = exec(command)
 
-    if not result.ok then
-        stdio.ewrite(result.stderr)
-        return
-    end
+	stdio.ewrite(result.stderr)
+	stdio.write(result.stdout)
 
-    stdio.write(result.stdout)
-end
-
-for _, path in fs.readDir("src") do
-    if fs.isDir(`src/{path}`) and fs.isFile(`src/{path}/wally.toml`) then
-        local result = exec(`wally install --project-path src/{path}`)
-
-        if not result.ok then
-            stdio.ewrite(result.stderr)
-            return
-        end
-
-        stdio.write(result.stdout)
-    end
+	if not result.ok then
+		return
+	end
 end
 
 stdio.write("\nFinished installing all dependencies.")
