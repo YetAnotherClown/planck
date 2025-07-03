@@ -1,2 +1,6 @@
-declare function useThrottle(seconds: number, discriminator?: unknown): boolean;
+declare function useThrottle(
+  seconds: number,
+  discriminator?: any | undefined
+): boolean;
+
 export = useThrottle;

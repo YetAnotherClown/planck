@@ -1,7 +1,9 @@
 import { Scheduler } from "@rbxts/planck";
+import type { Plugin as PluginInterface } from "@rbxts/planck";
 
-declare class MatterDebuggerPlugin<T extends unknown[]> {
-  getLoop(): any;
+declare class Plugin<T extends unknown[]> implements PluginInterface<T> {
   build(scheduler: Scheduler<T>): void;
+  getLoop(): any;
 }
-export = MatterDebuggerPlugin;
+
+export = Plugin;

@@ -1,6 +1,8 @@
 import { Scheduler } from "@rbxts/planck";
+import type { Plugin as PluginInterface } from "@rbxts/planck";
 
-declare class JabbyPlugin<T extends unknown[]> {
+declare class Plugin<T extends unknown[]> implements PluginInterface<T> {
   build(scheduler: Scheduler<T>): void;
 }
-export = JabbyPlugin;
+
+export = Plugin;
