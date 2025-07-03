@@ -6,7 +6,7 @@ import useEvent from "./hooks/useEvent";
 import useThrottle from "./hooks/useThrottle";
 
 export class Plugin<T extends unknown[]> implements PluginInterface<T> {
-  constructor(module: ModuleScript | undefined);
+  constructor(module?: ModuleScript);
   build(scheduler: Scheduler<T>): void;
 }
 
