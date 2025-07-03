@@ -1,4 +1,0 @@
-std = "selene_definitions"
-
-[rules]
-global_usage = "allow"

@@ -1,0 +1,24 @@
+{
+  "lsp": {
+    "luau-lsp": {
+      "settings": {
+        "ext": {
+          "roblox": {
+            "enabled": true,
+            "security_level": "roblox_script"
+          }
+        }
+      }
+    }
+  },
+  "languages": {
+    "Luau": {
+      "formatter": {
+        "external": {
+          "command": "stylua",
+          "arguments": ["--stdin-filepath", "{buffer_path}", "-"]
+        }
+      }
+    }
+  }
+}

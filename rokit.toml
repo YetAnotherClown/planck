@@ -4,8 +4,9 @@
 # New tools can be added by running `rokit add <tool>` in a terminal.
 
 [tools]
-rojo = "rojo-rbx/rojo@7.4.4"
+rojo = "rojo-rbx/rojo@7.5.1"
 run-in-roblox = "rojo-rbx/run-in-roblox@0.3.0"
 wally = "upliftGames/wally@0.3.2"
-darklua = "seaofvoices/darklua@0.14.0"
-wally-package-types = "JohnnyMorganz/wally-package-types@1.3.2"
+darklua = "seaofvoices/darklua@0.16.0"
+wally-package-types = "JohnnyMorganz/wally-package-types@1.4.2"
+lune = "lune-org/lune@0.9.3"

@@ -1,0 +1,20 @@
+{
+	"name": "Planck",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Packages": {
+				"$path": "out",
+				"Jabby": {
+					"$path": "Packages/Jabby.lua"
+				},
+				"_Index": {
+					"$path": "Packages/_Index"
+				}
+			},
+			"DevPackages": {
+				"$path": "DevPackages"
+			}
+		}
+	}
+}

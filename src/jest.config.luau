@@ -3,7 +3,7 @@ return {
 		"**/__tests__/*.(spec|test)",
 	},
 	testPathIgnorePatterns = {
-		"Packages",
+		"_Index",
 		"DevPackages",
 	},
 }

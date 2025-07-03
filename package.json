@@ -1,0 +1,31 @@
+{
+	"name": "@rbxts/planck-ts",
+	"version": "0.0.0",
+	"private": true,
+	"workspaces": [
+		"out/*"
+	],
+	"scripts": {
+		"build": "rbxtsc --rojo typescript.project.json",
+		"watch": "rbxtsc --rojo typescript.project.json -w",
+		"prepublishOnly": "npm run build"
+	},
+	"devDependencies": {
+		"@rbxts/compiler-types": "^2.3.0-types.1",
+		"@rbxts/types": "^1.0.781",
+		"@typescript-eslint/eslint-plugin": "^5.8.0",
+		"@typescript-eslint/parser": "^5.8.0",
+		"eslint": "^8.5.0",
+		"eslint-config-prettier": "^8.3.0",
+		"eslint-plugin-prettier": "^4.0.0",
+		"eslint-plugin-roblox-ts": "^0.0.32",
+		"prettier": "^2.5.1",
+		"roblox-ts": "^3.0.0",
+		"typescript": "^5.4.2"
+	},
+	"author": "YetAnotherClown",
+	"contributors": [
+		"MajestikButter"
+	],
+	"license": "MIT"
+}
