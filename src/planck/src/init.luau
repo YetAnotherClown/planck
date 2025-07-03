@@ -160,6 +160,16 @@ export type Scheduler<U...> = {
 		after: Phase | Pipeline
 	) -> Scheduler<U...>),
 
+	insertBefore: ((
+		self: Scheduler<U...>,
+		phase: Phase,
+		before: Phase | Pipeline
+	) -> Scheduler<U...>) & ((
+		self: Scheduler<U...>,
+		pipeline: Pipeline,
+		before: Phase | Pipeline
+	) -> Scheduler<U...>),
+
 	cleanup: (self: Scheduler<U...>) -> (),
 
 	new: (U...) -> Scheduler<U...>,
