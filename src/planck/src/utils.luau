@@ -53,30 +53,86 @@ end
 
 local EVENT_CONNECT_METHODS = { "Connect", "On", "on", "connect" }
 
-export type EventLike = RBXScriptSignal | {
-	connect: (self: EventLike, ...any) -> any,
+export type ConnectionLike = RBXScriptConnection | {
+	disconnect: (self: ConnectionLike, ...any) -> any,
 	[any]: any,
 } | {
-	Connect: (self: EventLike, ...any) -> any,
+	Disconnect: (self: ConnectionLike, ...any) -> any,
 	[any]: any,
 } | {
-	on: (self: EventLike, ...any) -> any,
+	destroy: (self: ConnectionLike, ...any) -> any,
+	[any]: any,
+} | {
+	Destroy: (self: ConnectionLike, ...any) -> any,
+	[any]: any,
+} | (...any) -> any
+
+local EVENT_DISCONNECT_METHODS =
+	{ "disconnect", "Disconnect", "destroy", "Destroy" }
+
+local function disconnectEvent(connection: ConnectionLike)
+	if type(connection) == "function" then
+		connection()
+		return
+	elseif typeof(connection) == "RBXScriptConnection" then
+		connection:Disconnect()
+		return
+	elseif type(connection) == "table" then
+		for _, method in EVENT_DISCONNECT_METHODS do
+			if
+				connection[method]
+				and type(connection[method]) == "function"
+			then
+				connection[method](connection)
+				return
+			end
+		end
+	end
+end
+
+export type Callback<U...> = (U...) -> ...any
+export type ConnectFn<T, U...> = (callback: (U...) -> ...any) -> T
+export type GenericTable = { [any]: any }
+
+export type SignalLike<U...> = {
+	connect: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
+	[any]: any,
+} | {
+	Connect: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
+	[any]: any,
+} | {
+	on: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
+	[any]: any,
+} | {
+	On: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
 	[any]: any,
 }
 
-export type EventInstance = Instance | {
-	[any]: EventLike,
-}
-
-type ConnectFn<U...> = (callback: (U...) -> ()) -> ()
+type GetConnectFn<U...> =
+	-- RBXScriptSignal & nil
+	((RBXScriptSignal<U...>) -> ConnectFn<RBXScriptConnection, U...>)
+	-- Instance & RBXScriptSignal
+	-- Instance & string
+	& ((
+		Instance,
+		RBXScriptSignal<U...> | string
+	) -> ConnectFn<RBXScriptConnection, U...>)
+	-- SignalLike & nil
+	& ((SignalLike<U...>) -> ConnectFn<any, U...>)
+	-- table & string
+	& ((GenericTable, string) -> ConnectFn<any, U...>)
+	-- table & connectable method
+	& (<T>(
+		GenericTable,
+		(GenericTable, Callback<U...>, ...any) -> T
+	) -> ConnectFn<T, U...>)
+	-- connectable function
+	& (<T>((Callback<U...>, ...any) -> T) -> ConnectFn<T, U...>)
 
 -- This function is inspired by useEvent in Matter, a library by evaera (https://github.com/evaera)
 -- License: Copyright (c) 2021 Eryn L. K., MIT License
 -- Source: https://github.com/matter-ecs/matter/blob/main/lib/hooks/useEvent.luau
-local function getConnectFunction<U...>(
-	instance: EventInstance | EventLike,
-	event: string | EventLike
-): ConnectFn<U...>?
+local function getConnectFunction(instance, event)
 	local eventInstance = instance
 
 	if typeof(event) == "RBXScriptSignal" or type(event) == "table" then
@@ -89,18 +145,24 @@ local function getConnectFunction<U...>(
 		return eventInstance
 	elseif typeof(eventInstance) == "RBXScriptSignal" then
 		return function(callback)
-			eventInstance:Connect(callback)
+			return eventInstance:Connect(callback)
 		end
 	end
 
 	if type(eventInstance) == "table" then
+		if type(event) == "function" then
+			return function(callback)
+				return event(eventInstance, callback)
+			end
+		end
+
 		for _, method in EVENT_CONNECT_METHODS do
 			if type(eventInstance[method]) ~= "function" then
 				continue
 			end
 
 			return function(callback)
-				eventInstance[method](eventInstance, callback)
+				return eventInstance[method](eventInstance, callback)
 			end
 		end
 	end
@@ -119,5 +181,6 @@ return {
 	isPipeline = isPipeline,
 	getEventIdentifier = getEventIdentifier,
 	isValidEvent = isValidEvent,
-	getConnectFunction = getConnectFunction,
+	getConnectFunction = getConnectFunction :: GetConnectFn<...any>,
+	disconnectEvent = disconnectEvent,
 }

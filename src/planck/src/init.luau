@@ -5,8 +5,11 @@ local Scheduler = require(script.Scheduler) :: any
 local conditions = require(script.conditions)
 local utils = require(script.utils)
 
-type EventLike = utils.EventLike
-type EventInstance = utils.EventInstance
+type GenericTable = utils.GenericTable
+type SignalLike<U...> = utils.SignalLike<U...>
+type ConnectionLike = utils.ConnectionLike
+type ConnectFn<T, U...> = utils.ConnectFn<T, U...>
+type Callback<U...> = utils.Callback<U...>
 
 export type SystemFn<U...> = ((U...) -> any) | ((U...) -> ())
 
@@ -38,6 +41,10 @@ export type Pipeline = {
 
 type Plugin<U...> = {
 	build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
+	[any]: any,
+} | {
+	build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
+	cleanup: (self: Plugin<U...>) -> (),
 	[any]: any,
 }
 
@@ -98,20 +105,50 @@ export type Scheduler<U...> = {
 
 	getDeltaTime: (self: Scheduler<U...>) -> number,
 
-	insert: ((self: Scheduler<U...>, phase: Phase) -> Scheduler<U...>) & ((
+	insert: ((
 		self: Scheduler<U...>,
-		pipeline: Pipeline
-	) -> Scheduler<U...>) & ((
-		self: Scheduler<U...>,
-		phase: Phase,
-		instance: EventInstance | EventLike,
-		event: string | EventLike
-	) -> Scheduler<U...>) & ((
-		self: Scheduler<U...>,
-		Pipeline: Pipeline,
-		instance: EventInstance | EventLike,
-		event: string | EventLike
-	) -> Scheduler<U...>),
+		dependency: Phase | Pipeline
+	) -> Scheduler<U...>)
+		-- RBXScriptSignal & nil
+		& ((
+			self: Scheduler<U...>,
+			dependency: Phase | Pipeline,
+			signal: RBXScriptSignal<U...>
+		) -> Scheduler<U...>)
+		-- Instance & RBXScriptSignal
+		-- Instance & string
+		& ((
+			self: Scheduler<U...>,
+			dependency: Phase | Pipeline,
+			instance: Instance,
+			event: RBXScriptSignal<U...> | string
+		) -> Scheduler<U...>)
+		-- SignalLike & nil
+		& ((
+			self: Scheduler<U...>,
+			dependency: Phase | Pipeline,
+			signal: SignalLike<U...>
+		) -> Scheduler<U...>)
+		-- table & string
+		& ((
+			self: Scheduler<U...>,
+			dependency: Phase | Pipeline,
+			table: GenericTable,
+			event: string
+		) -> Scheduler<U...>)
+		-- table & connectable method
+		& (<T>(
+			self: Scheduler<U...>,
+			dependency: Phase | Pipeline,
+			instance: GenericTable,
+			connectMethod: (GenericTable, Callback<U...>, ...any) -> T
+		) -> Scheduler<U...>)
+		-- connectable function
+		& (<T>(
+			self: Scheduler<U...>,
+			dependency: Phase | Pipeline,
+			connectFn: (Callback<U...>, ...any) -> T
+		) -> Scheduler<U...>),
 
 	insertAfter: ((
 		self: Scheduler<U...>,
@@ -122,6 +159,8 @@ export type Scheduler<U...> = {
 		pipeline: Pipeline,
 		after: Phase | Pipeline
 	) -> Scheduler<U...>),
+
+	cleanup: (self: Scheduler<U...>) -> (),
 
 	new: (U...) -> Scheduler<U...>,
 }

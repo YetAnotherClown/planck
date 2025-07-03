@@ -133,6 +133,7 @@ type SchedulerLike<U...> = {
 
 type Plugin<U...> = {
 	build: (self: Plugin<U...>, scheduler: SchedulerLike<U...>) -> (),
+	cleanup: ((self: Plugin<U...>) -> ())?,
 	new: () -> Plugin<U...>,
 }
 

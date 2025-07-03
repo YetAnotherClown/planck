@@ -118,6 +118,40 @@ return {
 }
 ```
 
+:::tip[Cleaning Up Events]
+If you would like to cleanup the event connection that the `onEvent` condition uses,
+you can get the disconnect function like so.
+
+```lua
+local Planck = require("@packages/Planck")
+
+local onEvent = Planck.onEvent
+local hasNewEvent, collectEvents, getDisconnectFn = onEvent(Players.PlayerAdded)
+
+local disconnect = getDisconnectFn()
+disconnect() -- Event is no longer connected
+```
+
+If you use `scheduler:removeSystem()` to remove a system, all of it's conditions
+will be cleaned up with it, so long as the condition is not being used for any
+other system, phase, or pipeline.
+:::
+
+#### Defining Events
+
+`Planck.onEvent` supports many different ways of defining events. Some provide full typechecking,
+while others don't.
+
+| Types                     	|                                                	| Typechecked 	|
+|---------------------------	|------------------------------------------------	|:-----------:	|
+| RBXScriptSignal           	| `Planck.onEvent(Players.PlayerAdded)`          	|      ✓      	|
+| Instance, RBXScriptSignal 	| `Planck.onEvent(Players, Players.PlayerAdded)` 	|      ✓      	|
+| Instance, string          	| `Planck.onEvent(Players, "PlayerAdded")`       	|      ✕      	|
+| SignalLike                	| `Planck.onEvent(mySignal)`                     	|      ✓      	|
+| table, string             	| `Planck.onEvent(t, "connect")`                 	|      ✕      	|
+| table, method             	| `Planck.onEvent(t, t.connect)`                 	|      ✓      	|
+| function                  	| `Planck.onEvent(connect)`                      	|      ✓      	|
+
 ### Not
 
 This is a really simple condition, it just inverses the condition passed.

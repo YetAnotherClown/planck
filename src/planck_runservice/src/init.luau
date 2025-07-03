@@ -107,6 +107,7 @@ end
 
 type Plugin<U...> = {
 	build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
+	cleanup: ((self: Plugin<U...>) -> ())?,
 	new: () -> Plugin<U...>,
 }
 

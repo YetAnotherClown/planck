@@ -50,6 +50,7 @@ Scheduler.Hooks = hooks.Hooks
 --- Initializes a plugin with the scheduler, see the [Plugin Docs](/docs/plugins) for more information.
 function Scheduler:addPlugin(plugin)
 	plugin:build(self)
+	table.insert(self._plugins, plugin)
 	return self
 end
 
@@ -133,11 +134,14 @@ function Scheduler:runSystem(system)
 
 	local function systemCall()
 		local function noYield()
-			local success, err = coroutine.resume(self._thread, function()
-				system(table.unpack(self._vargs))
+			local success, err
+			coroutine.resume(self._thread, function()
+				success, err = xpcall(system, function(e)
+					return debug.traceback(e)
+				end, table.unpack(self._vargs))
 			end)
 
-			if not success then
+			if success == false then
 				didYield = true
 				table.insert(systemInfo.logs, err)
 				hooks.systemError(self, systemInfo, err)
@@ -146,12 +150,16 @@ function Scheduler:runSystem(system)
 
 			if self._yielded then
 				didYield = true
-				local trace, line = debug.info(systemInfo.system, "sl")
-				table.insert(systemInfo.logs, `{trace}:{line}: System yielded`)
+				local source, line = debug.info(self._thread, 1, "sl")
+				local errMessage = `{source}:{line}: System yielded`
+				table.insert(
+					systemInfo.logs,
+					debug.traceback(self._thread, errMessage, 2)
+				)
 				hooks.systemError(
 					self,
 					systemInfo,
-					`{trace}:{line}: System yielded`
+					debug.traceback(self._thread, errMessage, 2)
 				)
 			end
 		end
@@ -615,6 +623,18 @@ function Scheduler:editSystem(system, newPhase)
 	return self
 end
 
+function Scheduler:_removeCondition(dependent, condition)
+	self._runIfConditions[dependent] = nil
+
+	for _, _conditions in self._runIfConditions do
+		if table.find(_conditions, condition) then
+			return
+		end
+	end
+
+	conditions.cleanupCondition(condition)
+end
+
 --- @method removeSystem
 --- @within Scheduler
 --- @param system System
@@ -635,6 +655,14 @@ function Scheduler:removeSystem(system)
 
 	table.remove(systems, index)
 	self._systemInfo[systemFn] = nil
+
+	if self._runIfConditions[system] then
+		for _, condition in self._runIfConditions[system] do
+			self:_removeCondition(system, condition)
+		end
+
+		self._runIfConditions[system] = nil
+	end
 
 	hooks.systemRemove(self, systemInfo)
 
@@ -770,8 +798,7 @@ function Scheduler:_scheduleEvent(instance, event)
 		end
 	end
 
-	connect(callback)
-	self._connectedEvents[identifier] = true
+	self._connectedEvents[identifier] = connect(callback)
 	self._eventDependencyGraphs[identifier] = dependencyGraph
 end
 
@@ -799,6 +826,47 @@ function Scheduler:_getGraphOfDependency(dependency)
 	error("Dependency does not belong to a DependencyGraph")
 end
 
+--- @within Scheduler
+---
+--- Disconnects all events, closes all threads, and performs
+--- other cleanup work.
+---
+--- :::danger
+--- Only use this if you intend to not use the associated
+--- Scheduler anymore. It will not work as intended.
+---
+--- You should dereference the scheduler object so that
+--- it may be garbage collected.
+--- :::
+---
+--- :::warning
+--- If you're creating a "throwaway" scheduler, you should
+--- not add plugins like Jabby or the Matter Debugger to it.
+--- These plugins are unable to properly be cleaned up, use
+--- them with caution.
+--- :::
+function Scheduler:cleanup()
+	for _, connection in self._connectedEvents do
+		utils.disconnectEvent(connection)
+	end
+
+	for _, plugin in self._plugins do
+		if plugin.cleanup then
+			plugin:cleanup()
+		end
+	end
+
+	if self._thread then
+		coroutine.close(self._thread)
+	end
+
+	for _, _conditions in self._runIfConditions do
+		for _, condition in _conditions do
+			conditions.cleanupCondition(condition)
+		end
+	end
+end
+
 --- @function new
 --- @within Scheduler
 --- @param args U...
@@ -819,6 +887,8 @@ function Scheduler.new(...)
 	self._systemInfo = {}
 
 	self._runIfConditions = {}
+
+	self._plugins = {}
 
 	setmetatable(self, Scheduler)
 

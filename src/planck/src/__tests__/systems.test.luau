@@ -177,11 +177,14 @@ describe("systems", function()
 		local myScheduler =
 			Scheduler.new(1, 2, 3):insert(myPhase):addSystem(system, myPhase)
 
-		local err
+		local err;
 
-		myScheduler:_addHook(myScheduler.Hooks.SystemError, function(args)
-			err = args.error
-		end)
+		(myScheduler :: any):_addHook(
+			(myScheduler :: any).Hooks.SystemError,
+			function(args)
+				err = args.error
+			end
+		)
 
 		myScheduler:runAll()
 		expect(err).toEqual(expect.stringContaining("System yielded"))
