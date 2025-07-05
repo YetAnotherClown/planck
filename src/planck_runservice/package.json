@@ -1,6 +1,6 @@
 {
 	"name": "@rbxts/planck-runservice",
-	"version": "0.2.0-rc.1",
+	"version": "0.2.0-rc.3",
 	"description": "A Plugin for Planck, adding default Phases for Roblox's RunService.",
 	"main": "src",
 	"repository": {
