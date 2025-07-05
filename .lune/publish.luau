@@ -252,6 +252,7 @@ elseif not dryRun then
 		stdio.ewrite(
 			`{stdio.color("red")}Cancelled publishing {#packages} packages`
 		)
+		return
 	end
 end
 
