@@ -147,6 +147,10 @@ local graph = DependencyGraph.new()
 
 for _, path in paths do
 	local packagePath = `src/{path}`
+	if not fs.isDir(packagePath) then
+		continue
+	end
+
 	local wallyPath = `{packagePath}/wally.toml`
 	local npmPath = `{packagePath}/package.json`
 
