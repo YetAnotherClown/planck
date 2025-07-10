@@ -16,7 +16,7 @@ You can also use the extended [matter-hooks](<https://github.com/matter-ecs/matt
 
 ```toml title="wally.toml"
 [dependencies]
-MatterHooks = "yetanotherclown/planck-matter-hooks@0.2.0"
+MatterHooks = "yetanotherclown/planck-matter-hooks@0.2.1"
 ```
 
 ### Setup and Use

@@ -36,7 +36,7 @@ Recommended project structure
 Matter = "matter-ecs/matter@0.8.4"
 Planck = "yetanotherclown/planck@0.2.0"
 PlanckMatterDebugger = "yetanotherclown/planck-matter-debugger@0.2.0"
-PlanckMatterHooks = "yetanotherclown/planck-matter-hooks@0.2.0"
+PlanckMatterHooks = "yetanotherclown/planck-matter-hooks@0.2.1"
 ```
 
 ### Creating the World
