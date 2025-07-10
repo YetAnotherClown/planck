@@ -82,6 +82,8 @@ if not topoRuntime then
 	setHooks(script)
 end
 
+export.useHookState = topoRuntime.useHookState
+
 local Plugin = {}
 Plugin.__index = Plugin
 
@@ -253,6 +255,10 @@ type Plugin<U...> = {
 }
 
 type Library = {
+	useHookState: (
+		discriminator: any?,
+		cleanupCallback: ((storage: { [any]: any }) -> boolean)?
+	) -> { [any]: any },
 	useDeltaTime: () -> number,
 	useEvent: (
 		instance: Instance | { [string]: CustomEvent } | CustomEvent,
