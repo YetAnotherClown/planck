@@ -34,9 +34,9 @@ Recommended project structure
 ```toml title="wally.toml"
 [dependencies]
 Matter = "matter-ecs/matter@0.8.4"
-Planck = "yetanotherclown/planck@0.2.0-rc.1"
-PlanckMatterDebugger = "yetanotherclown/planck-matter-debugger@0.2.0-rc.1"
-PlanckMatterHooks = "yetanotherclown/planck-matter-hooks@0.2.0-rc.1"
+Planck = "yetanotherclown/planck@0.2.0"
+PlanckMatterDebugger = "yetanotherclown/planck-matter-debugger@0.2.0"
+PlanckMatterHooks = "yetanotherclown/planck-matter-hooks@0.2.0"
 ```
 
 ### Creating the World

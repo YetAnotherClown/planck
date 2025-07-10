@@ -11,7 +11,7 @@ This Plugin handles all setup to add the Planck Scheduler to Jabby.
 
 ```toml title="wally.toml"
 [dependencies]
-PlanckJabby = "yetanotherclown/planck-jabby@0.2.0-rc.1"
+PlanckJabby = "yetanotherclown/planck-jabby@0.2.0"
 ```
 
 ### Setup and Use

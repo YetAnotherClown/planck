@@ -12,7 +12,7 @@ You can install Planck with Wally
 
 ```toml
 [dependencies]
-Planck = "yetanotherclown/planck@0.2.0-rc.1"
+Planck = "yetanotherclown/planck@0.2.0"
 ```
 
 ## What is Planck?
@@ -129,7 +129,7 @@ local scheduler = scheduler.new(world)
     :insert(UpdatePipeline, RunService, "Heartbeat")
 ```
 
-> [!TIP]  
+> [!TIP]
 > The `UpdatePipeline` seen here, already exists in Planck! It's a built-in Pipeline that you can use without any setup.
 > See all [Built-in Phases](https://yetanotherclown.github.io/planck/docs/getting_started/phases#built-in-phases).
 

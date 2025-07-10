@@ -11,7 +11,7 @@ Planck is available for installation via Wally or as a `.rbxm` in GitHub Release
 To install for wally, you can do:
 ```toml
 [dependencies]
-Planck = "yetanotherclown/planck@0.2.0-rc.1"
+Planck = "yetanotherclown/planck@0.2.0"
 ```
 
 It's suggested you get it installed before we continue, following along

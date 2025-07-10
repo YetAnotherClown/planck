@@ -95,7 +95,7 @@ RunService event.
 With Wally,
 ```toml
 [dependencies]
-PlanckRunService = "yetanotherclown/planck-runservice@0.2.0-rc.1"
+PlanckRunService = "yetanotherclown/planck-runservice@0.2.0"
 ```
 
 ### Pipelines

@@ -11,7 +11,7 @@ debugger.
 
 ```toml title="wally.toml"
 [dependencies]
-DebuggerPlugin = "yetanotherclown/planck-matter-debugger@0.2.0-rc.1"
+DebuggerPlugin = "yetanotherclown/planck-matter-debugger@0.2.0"
 ```
 
 ### Setup and Use
