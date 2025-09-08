@@ -30,7 +30,6 @@ local scheduler = Scheduler.new()
 <TabItem value="ts" label="TypeScript">
 ```ts
 import { Scheduler } from "@rbxts/planck";
-import { World } from "@rbxts/jecs";
 
 const scheduler = Scheduler.new();
 ```
