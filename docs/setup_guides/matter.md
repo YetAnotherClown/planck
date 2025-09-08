@@ -34,6 +34,8 @@ Recommended project structure
     ├─ client.client.luau
 </pre>
 
+<Tabs groupId="package-manager">
+<TabItem value="wally" label="Wally">
 ```toml title="wally.toml"
 [dependencies]
 Matter = "matter-ecs/matter@0.8.4"
@@ -41,6 +43,11 @@ Planck = "yetanotherclown/planck@0.2.0"
 PlanckMatterDebugger = "yetanotherclown/planck-matter-debugger@0.2.0"
 PlanckMatterHooks = "yetanotherclown/planck-matter-hooks@0.2.1"
 ```
+</TabItem>
+<TabItem value="npm" label="NPM">
+Run `npm i @rbxts/matter @rbxts/planck @rbxts/planck-matter-debugger @rbxts/planck-matter-hooks` in your terminal.
+</TabItem>
+</Tabs>
 
 ### Creating the World
 

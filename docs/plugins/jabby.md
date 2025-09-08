@@ -12,10 +12,17 @@ This Plugin handles all setup to add the Planck Scheduler to Jabby.
 
 ### Installation
 
+<Tabs groupId="package-manager">
+<TabItem value="wally" label="Wally">
 ```toml title="wally.toml"
 [dependencies]
 PlanckJabby = "yetanotherclown/planck-jabby@0.2.0"
 ```
+</TabItem>
+<TabItem value="npm" label="NPM">
+Run `npm i @rbxts/planck-jabby` in your terminal.
+</TabItem>
+</Tabs>
 
 ### Setup and Use
 

@@ -12,10 +12,17 @@ RunService event.
 
 ### Installation
 
+<Tabs groupId="package-manager">
+<TabItem value="wally" label="Wally">
 ```toml title="wally.toml"
 [dependencies]
 PlanckRunService = "yetanotherclown/planck-runservice@0.2.0"
 ```
+</TabItem>
+<TabItem value="npm" label="NPM">
+Run `npm i @rbxts/planck-runservice` in your terminal.
+</TabItem>
+</Tabs>
 
 ### Setup
 

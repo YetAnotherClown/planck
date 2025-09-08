@@ -17,10 +17,17 @@ You can also use the extended [matter-hooks](<https://github.com/matter-ecs/matt
 
 ### Installation
 
+<Tabs groupId="package-manager">
+<TabItem value="wally" label="Wally">
 ```toml title="wally.toml"
 [dependencies]
 MatterHooks = "yetanotherclown/planck-matter-hooks@0.2.1"
 ```
+</TabItem>
+<TabItem value="npm" label="NPM">
+Run `npm i @rbxts/planck-matter-hooks` in your terminal.
+</TabItem>
+</Tabs>
 
 ### Setup and Use
 
