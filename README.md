@@ -84,6 +84,10 @@ local scheduler = Scheduler.new(world, state)
     :addSystem(systemA)
 ```
 
+> [!NOTE]
+> Systems will not run by default without scheduling it on a [Phase](https://yetanotherclown.github.io/planck/docs/getting_started/phases) or using [`Scheduler:run()`](https://yetanotherclown.github.io/planck/api/Scheduler#run)/[`Scheduler:runAll()`](https://yetanotherclown.github.io/planck/api/Scheduler#runAll).
+> You can also use the [RunService Plugin](https://yetanotherclown.github.io/planck/docs/plugins/runservice) to have systems run on [`RunService.Heartbeat`](https://create.roblox.com/docs/reference/engine/classes/RunService#Heartbeat) by default.
+
 ### Phases
 
 Phases are used to split up your frame into different sections, this allows us to schedule our systems to run at different moments of a given frame.
