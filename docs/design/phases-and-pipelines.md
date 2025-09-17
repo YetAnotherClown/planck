@@ -4,6 +4,9 @@ description: Designing with Phases and Pipelines
 sidebar_position: 3
 ---
 
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
 # Phases and Pipelines
 
 ## Phases
@@ -32,6 +35,8 @@ are explicitly ordered to run one after another.
 By grouping Phases like this, we can manage them more effectively. Here's
 an example of what I mean:
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local Phase = Planck.Phase
 local Pipeline = Planck.Pipeline
@@ -49,7 +54,25 @@ local UpdatePipeline = Pipeline.new()
 local scheduler = scheduler.new(world)
     :insert(UpdatePipeline, RunService, "Heartbeat")
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import { Phase, Pipeline, Scheduler } from "@rbxts/planck";
 
+const PreUpdate = new Phase();
+const Update = new Phase();
+const PostUpdate = new Phase();
+
+const UpdatePipeline = new Pipeline()
+    .insert(PreUpdate)
+    .insert(Update)
+    .insert(PostUpdate);
+
+const scheduler = new Scheduler(world)
+    .insert(UpdatePipeline, RunService, "Heartbeat");
+```
+</TabItem>
+</Tabs>
 Instead of using `insert` on every Phase, we instead just insert the
 Pipeline and all of the Phases in the Pipeline are inserted on the same
 event.

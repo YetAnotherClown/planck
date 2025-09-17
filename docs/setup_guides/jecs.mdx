@@ -4,6 +4,9 @@ description: Suggested setup guide for Jecs
 sidebar_position: 2
 ---
 
+import TabItem from "@theme/TabItem";
+import Tabs from "@theme/Tabs";
+
 :::note
 This setup guide is only a suggestion, you can pick and choose which Plugins you use with Planck
 or how you use Planck and setup your project.
@@ -43,6 +46,8 @@ only the version used and confirmed to work with this setup guide.
 Check the respective repositories for [Jecs](https://github.com/Ukendio/jecs) and [Jabby](https://github.com/alicesaidhi/jabby) for updates.
 :::
  
+<Tabs groupId="package-manager">
+<TabItem value="wally" label="Wally">
 ```toml title="wally.toml"
 [dependencies]
 Jabby = "alicesaidhi/jabby@0.2.0-rc.8"
@@ -52,11 +57,18 @@ PlanckJabby = "yetanotherclown/planck-jabby@0.2.0-rc.1"
 PlanckRunService = "yetanotherclown/planck-runservice@0.2.0-rc.1"
 MatterHooks = "yetanotherclown/planck-matter-hooks@0.2.0-rc.1"
 ```
+</TabItem>
+<TabItem value="npm" label="NPM">
+Run `npm i @rbxts/jecs @rbxts/planck @rbxts/planck-jabby @rbxts/planck-runservice @rbxts/planck-matter-hooks @rbxts/planck-matter-debugger` in your terminal.
+</TabItem>
+</Tabs>
 
 ### Creating the World
 
 First, we'll create a module called `world.luau` where we create and export our Jecs World.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua title="ReplicatedStorage/shared/world.luau"
 local Jecs = require("@packages/Jecs")
 local World = Jecs.World
@@ -65,11 +77,23 @@ local world = World.new()
 
 return world
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts title="ReplicatedStorage/shared/world.ts"
+import { World } from "@rbxts/jecs";
 
+const world = new World();
+
+export default world;
+```
+</TabItem>
+</Tabs>
 ### Creating the Scheduler
 
 Next, we'll create a module called `scheduler.luau` where we create and export our scheduler.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua title="ReplicatedStorage/shared/scheduler.luau"
 local Planck = require("@packages/Planck")
 local Scheduler = Planck.Scheduler
@@ -78,10 +102,23 @@ local scheduler = Scheduler.new()
 
 return scheduler
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts title="ReplicatedStorage/shared/scheduler.ts"
+import { Scheduler } from "@rbxts/planck";
+
+const scheduler = new Scheduler(world);
+
+export default scheduler;
+```
+</TabItem>
+</Tabs>
 
 Then lets pass the world to our scheduler
 
-```lua {4,6}title="ReplicatedStorage/shared/scheduler.luau"
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
+```lua {4,6} title="ReplicatedStorage/shared/scheduler.luau"
 local Planck = require("@packages/Planck")
 local Scheduler = Planck.Scheduler
 
@@ -91,10 +128,25 @@ local scheduler = Scheduler.new(world)
 
 return scheduler
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts {3,5} title="ReplicatedStorage/shared/scheduler.ts"
+import { Scheduler } from "@rbxts/planck";
+
+import world from "shared/world";
+
+const scheduler = new Scheduler(world);
+
+export default scheduler;
+```
+</TabItem>
+</Tabs>
 
 And then let's add the Jabby and RunService Plugins
 
-```lua {6,7,9,10,13,14} title="ReplicatedStorage/shared/scheduler.luau"
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
+```lua {6-7,9-10,13-14} title="ReplicatedStorage/shared/scheduler.luau"
 local Planck = require("@packages/Planck")
 local Scheduler = Planck.Scheduler
 
@@ -112,10 +164,32 @@ local scheduler = Scheduler.new(world)
 
 return scheduler
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts {5-6,8-9,12-13} title="ReplicatedStorage/shared/scheduler.ts"
+import { Scheduler } from "@rbxts/planck";
+
+import world from "shared/world";
+
+import PlanckJabby from "@rbxts/planck-jabby";
+const jabbyPlugin = new PlanckJabby();
+
+import { Plugin as RunServicePlugin } from "@rbxts/planck-runservice";
+const runServicePlugin = new RunServicePlugin();
+
+const scheduler = new Scheduler(world, world.widgets)
+    .addPlugin(jabbyPlugin)
+    .addPlugin(runServicePlugin);
+```
+</TabItem>
+</Tabs>
+
 
 This next part is up to preference, if you would like to use the Matter topoRuntime
 to run Matter Hooks with Jecs you can follow add the Matter Hooks Plugin too.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua {9,10,14} title="ReplicatedStorage/shared/scheduler.luau"
 local Planck = require("@packages/Planck")
 local Scheduler = Planck.Scheduler
@@ -134,11 +208,34 @@ local scheduler = Scheduler.new(world)
 
 return scheduler
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts {8,9,13} title="ReplicatedStorage/shared/scheduler.ts"
+import { Scheduler } from "@rbxts/planck";
+
+import world from "shared/world";
+
+import PlanckJabby from "@rbxts/planck-jabby";
+const jabbyPlugin = new PlanckJabby();
+
+import MatterHooks from "@rbxts/planck-matter-hooks";
+const hooksPlugin = new MatterHooks();
+
+const scheduler = new Scheduler(world, world.widgets)
+    .addPlugin(jabbyPlugin);
+    .addPlugin(hooksPlugin);
+
+export default scheduler;
+```
+</TabItem>
+</Tabs>
 
 ### Making Components
 
 We'll store our Jecs components in a `components.luau` module.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua title="ReplicatedStorage/shared/components.luau"
 local world = require("@shared/world")
 
@@ -149,6 +246,18 @@ return {
     Oranges = world:component(),
 }
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts title="ReplicatedStorage/shared/components.ts"
+import world from "shared/world";
+
+export const Name = world.component();
+export const Eats = world.component();
+export const Apples = world.component();
+export const Oranges = world.component();
+```
+</TabItem>
+</Tabs>
 
 ### Creating Your First Systems
 
@@ -156,6 +265,8 @@ Let's create a basic system with Planck + Jecs
 
 This system will setup our initial entities, hence it running on the `Startup` phase.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua title="ReplicatedStorage/shared/systems/systemA.luau"
 local Jecs = require("@packages/Jecs")
 local pair = Jecs.pair
@@ -189,9 +300,39 @@ return {
     phase = Phase.Startup
 }
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts title="ReplicatedStorage/shared/systems/systemA.ts"
+import { pair } from "@rbxts/jecs";
+import { Phase } from "@rbxts/planck";
+import { Name, Eats, Apples, Oranges } from "shared/components";
+
+function systemA(world: World) {
+    world.set(Apples, Name, "apples");
+    world.set(Oranges, Name, "oranges");
+
+    const bob = world.entity();
+    world.set(bob, pair(Eats, Apples), 10);
+    world.set(bob, pair(Eats, Oranges), 5);
+    world.set(bob, Name, "bob");
+
+    const alice = world.entity();
+    world.set(alice, pair(Eats, Apples), 4);
+    world.set(alice, Name, "alice");
+}
+
+export = identity<System<[World]>>({
+    system: systemA,
+    phase: Phase.Startup,
+});
+```
+</TabItem>
+</Tabs>
 
 This next system will query each frame and print out which entity eats what.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua title="ReplicatedStorage/shared/systems/systemB.luau"
 local Jecs = require("@packages/Jecs")
 local pair = Jecs.pair
@@ -208,14 +349,33 @@ local function systemB(world)
         local food = world:target(id, Eats)
         local foodName = world:get(food, Name)
         local entityName = world:get(id, Name)
-        
+
         print(string.format("%s eats %d %s", entityName, amount, foodName))
     end
 end
 
 return systemB
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts title="ReplicatedStorage/shared/systems/systemB.ts"
+import { pair, Wildcard } from "@rbxts/jecs";
+import { Name, Eats } from "shared/components";
 
+function systemB(world: World) {
+    for (const [id, amount] of world.query(pair(Eats, Wildcard))) {
+        const food = world.target(id, Eats);
+        const foodName = world.get(food, Name);
+        const entityName = world.get(id, Name);
+
+        print(`${entityName} eats ${amount} ${foodName}`);
+    }
+}
+
+export = systemB;
+```
+</TabItem>
+</Tabs>
 Notice how you can define systems as either a function or a table!
 
 While you can set the phase directly in `Scheduler:addSystem(fn, phase)`,
@@ -235,6 +395,8 @@ reusable.
 Your Startup function is where you first require the world and scheduler modules,
 where you would add your systems to the scheduler, and where we will setup Jabby.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua title="ReplicatedStorage/shared/startup.luau"
 local Jabby = require("@packages/Jabby")
 
@@ -269,11 +431,50 @@ return function(systems)
     })
 end
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts title="ReplicatedStorage/shared/startup.ts"
+import { Scheduler } from "@rbxts/planck";
 
+import world from "shared/world";
+import scheduler from "shared/scheduler";
+
+export default function startup(systems: System<[World]>[]) {
+    if (systems.size() !== 0) {
+        scheduler.addSystems(systems); // Assuming you're using SystemTables!
+    }
+
+    if (RunService.IsClient()) {
+        const client = Jabby.obtain_client();
+
+        const createWidget = (_, state: Enum.UserInputState) => {
+            if (state !== Enum.UserInputState.Begin) {
+                return;
+            }
+
+            client.spawn_app(client.apps.home, null);
+        };
+
+        ContextActionService.BindAction("Open Jabby", createWidget, false, Enum.KeyCode.F4);
+    }
+
+    Jabby.register({
+        applet: Jabby.applets.world,
+        name: "Jecs World",
+        configuration: {
+            world: world,
+        },
+    });
+}
+```
+</TabItem>
+</Tabs>
 ### Server / Client Scripts
 
 On the client, we'll add the `shared` and `client` systems.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua title="ReplicatedStorage/client/client.client.luau"
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -296,9 +497,36 @@ addSystems(ReplicatedStorage.client.systems)
 
 startup(systems)
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts title="ReplicatedStorage/client/client.client.ts"
+const ReplicatedStorage = game.GetService("ReplicatedStorage");
 
+import startup from "shared/startup";
+
+const systems: System<[World]>[] = [];
+
+function addSystems(folder: Instance) {
+    for (const system of folder.GetChildren()) {
+        if (!system.isA("ModuleScript")) {
+            continue;
+        }
+
+        systems.push(require(system));
+    }
+}
+
+addSystems(ReplicatedStorage.FindFirstChild("shared")!.FindFirstChild("systems")!);
+addSystems(ReplicatedStorage.FindFirstChild("client")!.FindFirstChild("systems")!);
+
+startup(systems);
+```
+</TabItem>
+</Tabs>
 On the server, we'll instead add the `server` systems.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua {18} title="ServerScriptService/server/server.server.luau"
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -321,7 +549,32 @@ addSystems(ReplicatedStorage.server.systems)
 
 startup(systems)
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts {18} title="ServerScriptService/server/server.server.ts"
+const ReplicatedStorage = game.GetService("ReplicatedStorage");
 
+import startup from "shared/startup";
+
+const systems: System<[World]>[] = [];
+
+function addSystems(folder: Instance) {
+    for (const system of folder.GetChildren()) {
+        if (!system.isA("ModuleScript")) {
+            continue;
+        }
+
+        systems.push(require(system));
+    }
+}
+
+addSystems(ReplicatedStorage.FindFirstChild("shared")!.FindFirstChild("systems")!);
+addSystems(ReplicatedStorage.FindFirstChild("server")!.FindFirstChild("systems")!);
+
+startup(systems);
+```
+</TabItem>
+</Tabs>
 ### Credits
 
 This setup guide was heavily influenced by official Jecs examples and documentation.

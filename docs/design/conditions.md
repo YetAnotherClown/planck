@@ -4,6 +4,9 @@ description: Designing with Conditions
 sidebar_position: 4
 ---
 
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
 # Conditions
 
 During the execution of your game's code, not everything needs to be
@@ -17,6 +20,8 @@ false.
 
 We can set a Run Condition on a System/Phase/Pipeline like so,
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local function condition(world)
     if someCondition then
@@ -31,7 +36,24 @@ local scheduler = Scheduler.new(world)
     :addRunCondition(somePhase, condition)
     :addRunCondition(somePipeline, condition)
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+function condition(world: World) {
+    if (someCondition) {
+        return true;
+    } else {
+        return false;
+    }
+}
 
+const scheduler = new Scheduler(world)
+    .addRunCondition(systemA, condition)
+    .addRunCondition(somePhase, condition)
+    .addRunCondition(somePipeline, condition);
+```
+</TabItem>
+</Tabs>
 ## Common Conditions
 
 Planck provides several built-in conditions for you to use as
@@ -50,6 +72,8 @@ you can use to handle events inside of your systems.
 Sometimes, we only want our systems to run on specific intervals. We can
 use the `timePassed` condition:
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local Planck = require("@packages/Planck")
 
@@ -59,7 +83,16 @@ local timePassed = Planck.timePassed
 local scheduler = Scheduler.new(world)
     :addRunCondition(systemA, timePassed(10)) -- Run every 10 seconds
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import { Scheduler, timePassed } from "@rbxts/planck";
 
+const scheduler = new Scheduler(world)
+    .addRunCondition(systemA, timePassed(10)); // Run every 10 seconds
+```
+</TabItem>
+</Tabs>
 It's important to note that `systemA` will still be ran on
 `RunService.Heartbeat`. Our time will tick up until it reaches the given
 interval when the event fires again.
@@ -69,6 +102,8 @@ interval when the event fires again.
 In Planck, we have Startup Phases built-in. You might want to recreate
 something akin to these if you're not using the built-in Phases.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local Planck = require("@packages/Planck")
 
@@ -78,12 +113,24 @@ local runOnce = Planck.runOnce
 local scheduler = Scheduler.new(world)
     :addRunCondition(systemA, runOnce()) -- Run only once
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import { Scheduler, runOnce } from "@rbxts/planck";
+
+const scheduler = new Scheduler(world)
+    .addRunCondition(systemA, runOnce()); // Run only once
+```
+</TabItem>
+</Tabs>
 
 ### On Event
 
 We might want to run a system only when there are any new events since last
 frame.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local Planck = require("@packages/Planck")
 
@@ -94,10 +141,22 @@ local scheduler = Scheduler.new(world)
     -- Run out system only when there is a new Player
     :addRunCondition(systemA, onEvent(Players.PlayerAdded))
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import { Scheduler, onEvent } from "@rbxts/planck";
 
+const scheduler = new Scheduler(world)
+    // Run out system only when there is a new Player
+    .addRunCondition(systemA, onEvent(Players.PlayerAdded)[0]);
+```
+</TabItem>
+</Tabs>
 It is important to note that we don't actually collect the events using
 this condition. You will have to do that yourself.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local Players = game:GetService("Players")
 
@@ -117,11 +176,25 @@ return {
     runConditions = { hasNewEvent }
 }
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import { Scheduler, onEvent } from "@rbxts/planck";
 
+const [hasNewEvent, collectEvents] = onEvent(Players.PlayerAdded);
+
+const scheduler = new Scheduler(world)
+    // Run the system only when the Player is alive
+    .addRunCondition(systemA, disconnect);
+```
+</TabItem>
+</Tabs>
 :::tip[Cleaning Up Events]
 If you would like to cleanup the event connection that the `onEvent` condition uses,
 you can get the disconnect function like so.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local Planck = require("@packages/Planck")
 
@@ -131,7 +204,18 @@ local hasNewEvent, collectEvents, getDisconnectFn = onEvent(Players.PlayerAdded)
 local disconnect = getDisconnectFn()
 disconnect() -- Event is no longer connected
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import { Scheduler, onEvent } from "@rbxts/planck";
 
+const [hasNewEvent, collectEvents, getDisconnectFn] = onEvent(Players.PlayerAdded);
+
+const disconnect = getDisconnectFn();
+disconnect(); // Event is no longer connected
+```
+</TabItem>
+</Tabs>
 If you use `scheduler:removeSystem()` to remove a system, all of it's conditions
 will be cleaned up with it, so long as the condition is not being used for any
 other system, phase, or pipeline.
@@ -156,6 +240,8 @@ while others don't.
 
 This is a really simple condition, it just inverses the condition passed.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local Planck = require("@packages/Planck")
 
@@ -167,7 +253,17 @@ local scheduler = Scheduler.new(world)
     -- Run our system only when there is a new Player
     :addRunCondition(systemA, isNot(onEvent(Players.PlayerAdded)))
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import { Scheduler, onEvent, isNot } from "@rbxts/planck";
 
+const scheduler = new Scheduler(world)
+    // Run our system only when there is a new Player
+    .addRunCondition(systemA, isNot(onEvent(Players.PlayerAdded)[0]));
+```
+</TabItem>
+</Tabs>
 ## Ideas for Conditions
 
 ### Player Alive
@@ -177,6 +273,8 @@ to only run some systems when the Player is alive.
 
 Here's a write up for what that might look like for a client system,
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 -- Player singleton
 local LocalPlayer = world:component()
@@ -199,6 +297,31 @@ local scheduler = Scheduler.new(world)
     -- Run the system only when the Player is alive
     :addRunCondition(systemA, playerAlive())
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+const LocalPlayer = world.component();
+world.set(LocalPlayer, LocalPlayer);
+world.set(LocalPlayer, Health, 100);
+
+function playerAlive() {
+    return function (world: World) {
+        const health = world.get(LocalPlayer, Health);
+
+        if (health > 0) {
+            return true;
+        } else {
+            return false;
+        }
+    };
+}
+
+const scheduler = new Scheduler(world)
+    // Run the system only when the Player is alive
+    .addRunCondition(systemA, playerAlive());
+```
+</TabItem>
+</Tabs>
 
 This helps us to avoid unnecessarily running systems that only have behavior
 when the Player is alive.

@@ -4,6 +4,9 @@ description: The basics on ordering
 sidebar_position: 5
 ---
 
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
 # Order of Execution
 
 When using Planck, it is important to understand how your Pipelines, Phases,
@@ -57,12 +60,24 @@ by order of insertion. This is done by making the last added Phase/Pipeline a
 dependency of the latest Phase/Pipeline.
 
 For example,
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local scheduler = Scheduler.new()
     :insert(phaseA)
     :insert(phaseB)
     :runAll()
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+const scheduler = new Scheduler()
+    .insert(phaseA)
+    .insert(phaseB)
+    .runAll();
+```
+</TabItem>
+</Tabs>
 
 `phaseA` will run before `phaseB` when we do `scheduler:runAll()`.
 In this scenario, `phaseA` is a dependency of `phaseB`, where `phaseA`
@@ -70,25 +85,48 @@ must run before `phaseB`.
 
 Systems don't have any dependencies, they are only ordered by insertion
 within a phase,
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local scheduler = Scheduler.new()
     :addSystem(systemA)
     :addSystem(systemB)
     :runAll()
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+const scheduler = new Scheduler()
+    .addSystem(systemA)
+    .addSystem(systemB)
+    .runAll();
+```
+</TabItem>
+</Tabs>
 
 So, `systemA` runs before `systemB`.
 
 You can create dependencies for Phases/Pipelines explicitly too by using
 `Scheduler:insertAfter()` and `Scheduler:insertBefore()`.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local scheduler = Scheduler.new()
     :insert(phaseA)
     :insertAfter(phaseB, phaseA)
     :runAll()
 ```
-
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+const scheduler = new Scheduler()
+    .insert(phaseA)
+    .insertAfter(phaseB, phaseA)
+    .runAll();
+```
+</TabItem>
+</Tabs>
 `phaseB` now depends on `phaseA`, meaning it can't run until `phaseA` runs.
 
 `Scheduler:insertBefore(phaseB, phaseA)` works similarly too, except `phaseB` can only
@@ -108,13 +146,24 @@ Phases/Pipelines in different groups are not ordered together, instead each
 group is isolated and their Phases/Pipelines will run in an order within the
 group.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local scheduler = Scheduler.new()
     :insert(pipelineA, RunService.Heartbeat)
     :insertAfter(pipelineB, RunService.PostSimulation)
     :runAll()
 ```
-
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+const scheduler = new Scheduler()
+    .insert(pipelineA, RunService.Heartbeat)
+    .insertAfter(pipelineB, RunService.PostSimulation)
+    .runAll();
+```
+</TabItem>
+</Tabs>
 This code will create two groups: `Heartbeat` and `PostSimulation`.
 When `Scheduler:runAll()` runs, first it will process every Phase or Pipeline
 on the `Heartbeat` group. And then, it will process every Phase or Pipeline on the
