@@ -1,8 +1,8 @@
 export type EventLike<T extends unknown[] = unknown[]> =
   | RBXScriptSignal<(...args: T) => void>
-  | { connect(...args: T): unknown }
-  | { Connect(...args: T): unknown }
-  | { on(...args: T): unknown };
+  | { connect(listener: (...args: T) => void): unknown }
+  | { Connect(listener: (...args: T) => void): unknown }
+  | { on(listener: (...args: T) => void): unknown };
 export type EventInstance = Instance | { [k: string]: EventLike };
 
 export type ExtractEvents<T extends EventInstance> = {
