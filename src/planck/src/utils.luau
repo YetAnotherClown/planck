@@ -2,14 +2,15 @@ type Phase = any
 type Pipeline = any
 
 type SystemFn<U...> = ((U...) -> any) | ((U...) -> ())
+type SystemInitializerFn<U...> = (U...) -> SystemFn<U...>
 
 type SystemTable<U...> = {
-	system: SystemFn<U...>,
+	system: SystemFn<U...> | SystemInitializerFn<U...>,
 	phase: Phase?,
 	[any]: any,
 }
 
-type System<U...> = SystemFn<U...> | SystemTable<U...>
+type System<U...> = SystemFn<U...> | SystemInitializerFn<U...> | SystemTable<U...>
 
 local function getSystem<U...>(system: any): SystemTable<U...>?
 	if type(system) == "function" then
@@ -94,19 +95,23 @@ export type Callback<U...> = (U...) -> ...any
 export type ConnectFn<T, U...> = (callback: (U...) -> ...any) -> T
 export type GenericTable = { [any]: any }
 
-export type SignalLike<U...> = {
-	connect: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
-	[any]: any,
-} | {
-	Connect: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
-	[any]: any,
-} | {
-	on: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
-	[any]: any,
-} | {
-	On: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
-	[any]: any,
-}
+export type SignalLike<U...> =
+	{
+		connect: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
+		[any]: any,
+	}
+	| {
+		Connect: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
+		[any]: any,
+	}
+	| {
+		on: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
+		[any]: any,
+	}
+	| {
+		On: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
+		[any]: any,
+	}
 
 type GetConnectFn<U...> =
 	-- RBXScriptSignal & nil

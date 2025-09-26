@@ -131,20 +131,21 @@ function Scheduler:runSystem(system)
 	end
 
 	local didYield = false
+	local errOrSys
 
 	local function systemCall()
 		local function noYield()
-			local success, err
+			local success
 			coroutine.resume(self._thread, function()
-				success, err = xpcall(system, function(e)
+				success, errOrSys = xpcall(system, function(e)
 					return debug.traceback(e)
 				end, table.unpack(self._vargs))
 			end)
 
 			if success == false then
 				didYield = true
-				table.insert(systemInfo.logs, err)
-				hooks.systemError(self, systemInfo, err)
+				table.insert(systemInfo.logs, errOrSys)
+				hooks.systemError(self, systemInfo, errOrSys)
 				return
 			end
 
@@ -210,6 +211,7 @@ function Scheduler:runSystem(system)
 	end
 
 	self:_handleLogs(systemInfo)
+	return errOrSys
 end
 
 function Scheduler:runPhase(phase)
@@ -242,6 +244,63 @@ function Scheduler:runPipeline(pipeline)
 	for _, phase in orderedList do
 		self:runPhase(phase)
 	end
+end
+
+function Scheduler:runStartup()
+	if self:_canRun(Pipeline.Startup) == false then
+		return
+	end
+
+	local orderedList = Pipeline.Startup.dependencyGraph:getOrderedList()
+	assert(
+		orderedList,
+		`Pipeline {Pipeline.Startup} contains a circular dependency, check it's Phases`
+	)
+
+	for _, phase in orderedList do
+		if self:_canRun(phase) == false then
+			continue
+		end
+
+		hooks.phaseBegan(self, phase)
+
+		if not self._phaseToSystems[phase] then
+			self._phaseToSystems[phase] = {}
+		end
+
+		for _, system in self._phaseToSystems[phase] do
+			local systemInfo = self._systemInfo[system]
+			if systemInfo.initializer then
+				self:_resolveSystemInitializer(system, systemInfo)
+			else
+				self:runSystem(system)
+			end
+		end
+	end
+end
+
+function Scheduler:_resolveSystemInitializer(system, systemInfo)
+	-- System initializers are functions that return the actual runtime system
+	-- function, allowing initialization logic to run once during startup while
+	-- the returned function becomes the system that runs each frame. During
+	-- resolution, this creates two distinct systems: the original function
+	-- becomes an initialization system that executes once, and the returned
+	-- function becomes the runtime system that executes repeatedly.
+	local result = self:runSystem(system)
+
+	if type(result) ~= "function" then
+		local err = `System '{systemInfo.name}' did not return a function`
+		table.insert(systemInfo.logs, err)
+		hooks.systemError(self, systemInfo, err)
+		return
+	end
+
+	local inner = table.clone(systemInfo)
+	inner.initializer = nil
+	inner.system = result
+	inner.phase = systemInfo.innerPhase
+
+	self:addSystem(inner, systemInfo.innerPhase)
 end
 
 function Scheduler:_canRun(dependent)
@@ -284,7 +343,7 @@ function Scheduler:run(dependent)
 		error("No dependent specified in Scheduler:run(_)")
 	end
 
-	self:runPipeline(Pipeline.Startup)
+	self:runStartup()
 
 	if getSystem(dependent) then
 		self:runSystem(dependent)
@@ -518,20 +577,30 @@ function Scheduler:addSystem(system, phase)
 		name = system.name
 	end
 
+	local initializer = if type(system) == "table"
+		then system.initializer
+		else nil
+
+	local scheduledPhase = (function()
+		if phase then
+			return phase
+		end
+
+		if type(system) == "table" and system.phase then
+			return system.phase
+		end
+
+		return self._defaultPhase
+	end)()
+
 	local systemInfo = {
 		system = systemFn,
-		phase = phase,
+		phase = if initializer then initializer else scheduledPhase,
+		innerPhase = scheduledPhase,
 		name = name,
 		logs = {},
+		initializer = initializer,
 	}
-
-	if not phase then
-		if type(system) == "table" and system.phase then
-			systemInfo.phase = system.phase
-		else
-			systemInfo.phase = self._defaultPhase
-		end
-	end
 
 	self._systemInfo[systemFn] = systemInfo
 
@@ -599,7 +668,7 @@ function Scheduler:editSystem(system, newPhase)
 	local systemInfo = self._systemInfo[systemFn]
 	assert(
 		systemInfo,
-		"Attempt to remove a non-exist system in Scheduler:removeSystem(_)"
+		"Attempt to edit a non-existent system in Scheduler:editSystem(_)"
 	)
 
 	assert(

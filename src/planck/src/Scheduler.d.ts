@@ -4,14 +4,118 @@ import { Phase } from "./Phase";
 import { Pipeline } from "./Pipeline";
 import { EventInstance, EventLike, ExtractEvents } from "./utils";
 
-export type SystemFn<T extends unknown[]> = (...args: T) => any;
-export interface SystemTable<T extends unknown[]> {
-  system: SystemFn<T>;
+/**
+ * A system function that executes game logic with provided arguments.
+ * Systems perform side effects and should not return values.
+ *
+ * @example
+ * ```ts
+ * function movementSystem(world: World, deltaTime: number): void {
+ *   // Update entity positions
+ * }
+ * ```
+ */
+export type SystemFn<T extends unknown[]> = (...args: T) => void;
+
+/**
+ * A function that creates and returns a system function.
+ * Used for systems that need initialization logic.
+ *
+ * @example
+ * ```ts
+ * function movementSystem(world: World): SystemFn<[World]> {
+ *   // run once for setup, while being able to access scheduler state
+ *   return () => {
+ *     // runs every frame
+ *   }
+ * }
+ * ```
+ */
+export type SystemInitializerFn<T extends unknown[]> = (
+  ...args: T
+) => SystemFn<T>;
+
+/**
+ * Base configuration shared by all system table types.
+ * Contains optional metadata and execution conditions.
+ */
+export interface BaseSystemTable<T extends unknown[]> {
+  /** The execution phase for this system. Defaults to Main phase. */
   phase?: Phase;
+  /** Human-readable name for debugging and profiling */
   name?: string;
+  /** Conditions that must be met for the system to execute */
   runConditions?: Condition<T>[];
-  [key: string]: any;
+  /** Allow additional properties for plugin extensibility */
+  [key: string]: unknown;
 }
+
+/**
+ * System table for direct system functions.
+ * Use this when your system doesn't need one-time initialization.
+ *
+ * @example
+ * ```ts
+ * export = {
+ *   name: "Render System",
+ *   phase: Phases.Update,
+ *   system: renderSystem,
+ *   runConditions: [hasVisibleEntities]
+ * };
+ * ```
+ */
+export interface RegularSystemTable<T extends unknown[]>
+  extends BaseSystemTable<T> {
+  system: SystemFn<T>;
+  initializer?: never;
+}
+
+/**
+ * System table for systems that require initialization.
+ * The initializer phase runs once to set up the system.
+ *
+ * @example
+ * ```ts
+ * export = {
+ *   name: "Audio System",
+ *   phase: AudioPhase,
+ *   system: createAudioSystem, // Returns SystemFn<[World]>
+ *   initializer: StartupPhase,
+ * };
+ * ```
+ */
+export interface SystemInitializerTable<T extends unknown[]>
+  extends BaseSystemTable<T> {
+  system: SystemInitializerFn<T>;
+  initializer: Phase;
+}
+
+export type SystemTable<T extends unknown[]> =
+  | RegularSystemTable<T>
+  | SystemInitializerTable<T>;
+
+/**
+ * A system can be either a function or a configuration table.
+ * Use a function for simple systems, or a table for systems that need
+ * additional configuration like phases, run conditions, or names.
+ *
+ * @example
+ * ```ts
+ * function updateSystem(world: World): void {
+ *   // update entities
+ * }
+ *
+ * // Simple function system
+ * export = updateSystem;
+ *
+ * // Table system with configuration
+ * export = {
+ *   name: "Complex System",
+ *   system: updateSystem,
+ *   runConditions: [onlyWhenNeeded]
+ * };
+ * ```
+ */
 export type System<T extends unknown[]> = SystemTable<T> | SystemFn<T>;
 
 /**

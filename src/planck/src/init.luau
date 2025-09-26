@@ -11,13 +11,17 @@ type ConnectionLike = utils.ConnectionLike
 type ConnectFn<T, U...> = utils.ConnectFn<T, U...>
 type Callback<U...> = utils.Callback<U...>
 
-export type SystemFn<U...> = ((U...) -> any) | ((U...) -> ())
+export type SystemFn<U...> =
+	| ((U...) -> any)
+	| ((U...) -> ())
+	| (U...) -> SystemFn<U...>
 
 export type SystemTable<U...> = {
 	system: SystemFn<U...>,
 	phase: Phase?,
 	name: string?,
 	runConditions: { (U...) -> boolean }?,
+	initializer: Phase?,
 	[any]: any,
 }
 
@@ -39,14 +43,16 @@ export type Pipeline = {
 	new: (debugName: string?) -> Pipeline,
 }
 
-type Plugin<U...> = {
-	build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
-	[any]: any,
-} | {
-	build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
-	cleanup: (self: Plugin<U...>) -> (),
-	[any]: any,
-}
+type Plugin<U...> =
+	{
+		build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
+		[any]: any,
+	}
+	| {
+		build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
+		cleanup: (self: Plugin<U...>) -> (),
+		[any]: any,
+	}
 
 export type Scheduler<U...> = {
 	addPlugin: (self: Scheduler<U...>, plugin: Plugin<U...>) -> Scheduler<U...>,
