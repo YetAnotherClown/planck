@@ -264,5 +264,5 @@ dependencies = []
 
 [[package]]
 name = "yetanotherclown/planck"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [["Jabby", "alicesaidhi/jabby@0.2.3"], ["Jest", "jsdotlua/jest@3.10.0"], ["JestGlobals", "jsdotlua/jest-globals@3.10.0"]]
