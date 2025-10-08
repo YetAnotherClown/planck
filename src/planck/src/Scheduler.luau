@@ -769,7 +769,6 @@ function Scheduler:removeSystem(system)
 				systemInfo.name,
 				tostring(err)
 			)
-			warn(errMsg)
 			hooks.systemError(self, systemInfo, errMsg)
 			hooks.systemCleanup(self, systemInfo, errMsg)
 		end
@@ -815,6 +814,21 @@ function Scheduler:replaceSystem(old, new)
 		newSystemFn,
 		"Attempt to pass non-system in Scheduler:replaceSystem(_, unknown)"
 	)
+
+	if oldSystemInfo.cleanup then
+		local success, err = pcall(oldSystemInfo.cleanup)
+		if success then
+			hooks.systemCleanup(self, oldSystemInfo, nil)
+		else
+			local errMsg = string.format(
+				"Cleanup failed for system '%s': %s",
+				oldSystemInfo.name,
+				tostring(err)
+			)
+			hooks.systemError(self, oldSystemInfo, errMsg)
+			hooks.systemCleanup(self, oldSystemInfo, errMsg)
+		end
+	end
 
 	local systems = self._phaseToSystems[oldSystemInfo.phase]
 

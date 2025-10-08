@@ -531,6 +531,37 @@ describe("Initializer Systems", function()
 			expect(cleanupRan).toBe(true)
 			expect(myScheduler._systemInfo[brokenCleanupSystem]).toBeNil()
 		end)
+
+		test("cleanup on replaceSystem", function()
+			expect.assertions(3)
+
+			local cleanupCount = 0
+			local newSystemRan = false
+
+			local function oldSystem()
+				return function() end, function()
+					cleanupCount += 1
+				end
+			end
+
+			local function newSystem()
+				newSystemRan = true
+			end
+
+			local myScheduler = Scheduler.new()
+			local myPhase = Phase.new("myPhase")
+
+			myScheduler:insert(myPhase):addSystem(oldSystem, myPhase)
+
+			myScheduler:runPhase(myPhase)
+			expect(cleanupCount).toBe(0)
+
+			myScheduler:replaceSystem(oldSystem, newSystem)
+			expect(cleanupCount).toBe(1)
+
+			myScheduler:runPhase(myPhase)
+			expect(newSystemRan).toBe(true)
+		end)
 	end)
 
 	describe("Integration", function()
