@@ -22,11 +22,22 @@ local timeLastLogged = os.clock()
 
 --- @type SystemFn ((U...) -> any)
 --- @within Scheduler
+--- Standard system function that runs every time it's scheduled
+
+--- @type InitializerSystemFn ((U...) -> (SystemFn<U...> | (SystemFn<U...>, CleanupFn)))
+--- @within Scheduler
+--- Initializer system that returns the runtime function, optionally with cleanup
+
+--- @type CleanupFn (() -> ())
+--- @within Scheduler
+--- Cleanup function called when system is removed
 
 --- @interface SystemTable
 --- @within Scheduler
---- .system SystemFn<U...>
+--- .system SystemFn<U...> | InitializerSystemFn<U...>
 --- .phase Phase?
+--- .name string?
+--- .runConditions {RunCondition}?
 --- .[any] any
 
 --- @type System SystemFn<U...> | SystemTable<U...>
@@ -131,15 +142,16 @@ function Scheduler:runSystem(system)
 	end
 
 	local didYield = false
-	local errOrSys
 
 	local function systemCall()
 		local function noYield()
-			local success
+			local success, errOrSys, cleanup
 			coroutine.resume(self._thread, function()
-				success, errOrSys = xpcall(system, function(e)
+				success, errOrSys, cleanup = xpcall(function()
+					return systemInfo.run(table.unpack(self._vargs))
+				end, function(e)
 					return debug.traceback(e)
-				end, table.unpack(self._vargs))
+				end)
 			end)
 
 			if success == false then
@@ -162,6 +174,53 @@ function Scheduler:runSystem(system)
 					systemInfo,
 					debug.traceback(self._thread, errMessage, 2)
 				)
+				return
+			end
+
+			if not systemInfo.initialized then
+				if errOrSys == nil and cleanup == nil then
+					systemInfo.initialized = true
+					return
+				end
+
+				if type(errOrSys) == "function" then
+					systemInfo.run = errOrSys
+					systemInfo.initialized = true
+					if type(cleanup) == "function" then
+						systemInfo.cleanup = cleanup
+					end
+
+					return
+				end
+
+				if type(errOrSys) == "table" then
+					local hasSystem = type(errOrSys.system) == "function"
+					local hasCleanup = type(errOrSys.cleanup) == "function"
+
+					if hasSystem or hasCleanup then
+						if hasSystem then
+							systemInfo.run = errOrSys.system
+						end
+
+						if hasCleanup then
+							systemInfo.cleanup = errOrSys.cleanup
+						end
+
+						systemInfo.initialized = true
+						return
+					end
+				end
+
+				local err = string.format(
+					"System '%s' initializer returned invalid type. "
+						.. "Expected: function, {system?, cleanup?}, or (function, function). "
+						.. "Got: %s, %s",
+					systemInfo.name,
+					type(errOrSys),
+					type(cleanup)
+				)
+				table.insert(systemInfo.logs, err)
+				hooks.systemError(self, systemInfo, err)
 			end
 		end
 
@@ -211,7 +270,6 @@ function Scheduler:runSystem(system)
 	end
 
 	self:_handleLogs(systemInfo)
-	return errOrSys
 end
 
 function Scheduler:runPhase(phase)
@@ -244,63 +302,6 @@ function Scheduler:runPipeline(pipeline)
 	for _, phase in orderedList do
 		self:runPhase(phase)
 	end
-end
-
-function Scheduler:runStartup()
-	if self:_canRun(Pipeline.Startup) == false then
-		return
-	end
-
-	local orderedList = Pipeline.Startup.dependencyGraph:getOrderedList()
-	assert(
-		orderedList,
-		`Pipeline {Pipeline.Startup} contains a circular dependency, check it's Phases`
-	)
-
-	for _, phase in orderedList do
-		if self:_canRun(phase) == false then
-			continue
-		end
-
-		hooks.phaseBegan(self, phase)
-
-		if not self._phaseToSystems[phase] then
-			self._phaseToSystems[phase] = {}
-		end
-
-		for _, system in self._phaseToSystems[phase] do
-			local systemInfo = self._systemInfo[system]
-			if systemInfo.initializer then
-				self:_resolveSystemInitializer(system, systemInfo)
-			else
-				self:runSystem(system)
-			end
-		end
-	end
-end
-
-function Scheduler:_resolveSystemInitializer(system, systemInfo)
-	-- System initializers are functions that return the actual runtime system
-	-- function, allowing initialization logic to run once during startup while
-	-- the returned function becomes the system that runs each frame. During
-	-- resolution, this creates two distinct systems: the original function
-	-- becomes an initialization system that executes once, and the returned
-	-- function becomes the runtime system that executes repeatedly.
-	local result = self:runSystem(system)
-
-	if type(result) ~= "function" then
-		local err = `System '{systemInfo.name}' did not return a function`
-		table.insert(systemInfo.logs, err)
-		hooks.systemError(self, systemInfo, err)
-		return
-	end
-
-	local inner = table.clone(systemInfo)
-	inner.initializer = nil
-	inner.system = result
-	inner.phase = systemInfo.innerPhase
-
-	self:addSystem(inner, systemInfo.innerPhase)
 end
 
 function Scheduler:_canRun(dependent)
@@ -343,7 +344,7 @@ function Scheduler:run(dependent)
 		error("No dependent specified in Scheduler:run(_)")
 	end
 
-	self:runStartup()
+	self:runPipeline(Pipeline.Startup)
 
 	if getSystem(dependent) then
 		self:runSystem(dependent)
@@ -558,13 +559,33 @@ function Scheduler:insertBefore(dependent, before)
 	return self
 end
 
---- @method addSystems
+--- @method addSystem
 --- @within Scheduler
---- @param systems System
+--- @param system System
 --- @param phase Phase?
+--- @return Scheduler
 ---
 --- Adds the System to the Scheduler, scheduling it to be ran
 --- implicitly within the provided Phase or on the default Main phase.
+---
+--- **Initializer Systems**: Systems can optionally return a function on their
+--- first execution, which becomes the runtime system. This allows one-time
+--- setup logic without creating separate initialization phases.
+---
+--- local function renderSystem(world, state)
+---     -- This runs once on first execution
+---     local renderables = world:query(Transform, Model):cached()
+---
+---     -- This runs on each subsequent execution
+---     return function(world, state)
+---         for id, transform, model in renderables do
+---             render(transform, model)
+---         end
+---     end, function()
+---         -- Optional cleanup logic runs on removeSystem
+---     end
+--- end
+--- ```
 function Scheduler:addSystem(system, phase)
 	local systemFn = getSystem(system)
 
@@ -576,10 +597,6 @@ function Scheduler:addSystem(system, phase)
 	if type(system) == "table" and system.name then
 		name = system.name
 	end
-
-	local initializer = if type(system) == "table"
-		then system.initializer
-		else nil
 
 	local scheduledPhase = (function()
 		if phase then
@@ -595,11 +612,12 @@ function Scheduler:addSystem(system, phase)
 
 	local systemInfo = {
 		system = systemFn,
-		phase = if initializer then initializer else scheduledPhase,
-		innerPhase = scheduledPhase,
+		run = systemFn,
+		cleanup = nil,
+		phase = scheduledPhase,
 		name = name,
 		logs = {},
-		initializer = initializer,
+		initialized = false,
 	}
 
 	self._systemInfo[systemFn] = systemInfo
@@ -707,15 +725,55 @@ end
 --- @method removeSystem
 --- @within Scheduler
 --- @param system System
+--- @return Scheduler
 ---
 --- Removes the System from the Scheduler.
+---
+--- If the system provided a cleanup function during initialization,
+--- that cleanup function will be executed before removal.
+---
+--- ```lua
+--- -- System with cleanup
+--- local function networkSystem(world, state)
+---     local connection = Players.PlayerAdded:Connect(function(player)
+---         -- Player joined logic
+---     end)
+---
+---     return function(world, state)
+---         -- Runtime logic
+---     end, function()
+---         -- Cleanup runs on removeSystem
+---         connection:Disconnect()
+---     end
+--- end
+---
+--- scheduler:addSystem(networkSystem, Phase.Update)
+--- -- Later...
+--- scheduler:removeSystem(networkSystem) -- Cleanup executes here
+--- ```
 function Scheduler:removeSystem(system)
 	local systemFn = getSystem(system)
 	local systemInfo = self._systemInfo[systemFn]
 	assert(
 		systemInfo,
-		"Attempt to remove a non-exist system in Scheduler:removeSystem(_)"
+		"Attempt to remove a non-existent system in Scheduler:removeSystem(_)"
 	)
+
+	if systemInfo.cleanup then
+		local success, err = pcall(systemInfo.cleanup)
+		if success then
+			hooks.systemCleanup(self, systemInfo, nil)
+		else
+			local errMsg = string.format(
+				"Cleanup failed for system '%s': %s",
+				systemInfo.name,
+				tostring(err)
+			)
+			warn(errMsg)
+			hooks.systemError(self, systemInfo, errMsg)
+			hooks.systemCleanup(self, systemInfo, errMsg)
+		end
+	end
 
 	local systems = self._phaseToSystems[systemInfo.phase]
 
@@ -769,6 +827,9 @@ function Scheduler:replaceSystem(old, new)
 	local copy = table.clone(oldSystemInfo)
 
 	oldSystemInfo.system = newSystemFn
+	oldSystemInfo.run = newSystemFn
+	oldSystemInfo.cleanup = nil
+	oldSystemInfo.initialized = false
 	oldSystemInfo.name = getSystemName(newSystemFn)
 
 	hooks.systemReplace(self, copy, oldSystemInfo)
