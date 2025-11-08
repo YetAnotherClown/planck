@@ -27,9 +27,11 @@ local function getSystemName(system: any): string
 		return system.name
 	end
 
-	local name = debug.info(system, "n")
+	local fn = type(system) == "table" and system.system or system
+
+	local name = debug.info(fn, "n")
 	if not name or string.len(name) == 0 then
-		local source, line = debug.info(system, "sl")
+		local source, line = debug.info(fn, "sl")
 		name = `{source}:{line}`
 	end
 

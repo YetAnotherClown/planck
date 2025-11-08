@@ -204,6 +204,45 @@ describe("scheduler", function()
 		expect(deltaTime).never.toEqual(0)
 	end)
 
+	test("custom system name", function()
+		expect.assertions(5)
+
+		local myScheduler = Scheduler.new()
+
+		local function mySystem() end
+
+		myScheduler:addSystem({
+			name = "CustomSystemName",
+			system = mySystem,
+		})
+
+		expect(myScheduler._systemInfo[mySystem].name).toBe("CustomSystemName")
+
+		local function anotherSystem() end
+		myScheduler:addSystem(anotherSystem)
+
+		expect(myScheduler._systemInfo[anotherSystem].name).toBe(
+			"anotherSystem"
+		)
+
+		local function replacementSystem() end
+		myScheduler:replaceSystem(mySystem, {
+			name = "ReplacedSystemName",
+			system = replacementSystem,
+		})
+
+		expect(myScheduler._systemInfo[replacementSystem].name).toBe(
+			"ReplacedSystemName"
+		)
+
+		local function finalSystem() end
+		myScheduler:replaceSystem(replacementSystem, finalSystem)
+
+		expect(myScheduler._systemInfo[finalSystem].name).toBe("finalSystem")
+
+		expect(myScheduler._systemInfo[replacementSystem]).toBeNil()
+	end)
+
 	describe("startup systems", function()
 		test("should run once", function()
 			expect.assertions(1)

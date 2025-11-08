@@ -600,7 +600,7 @@ function Scheduler:addSystem(system, phase)
 		error("Unknown system passed to Scheduler:addSystem(unknown, phase?)")
 	end
 
-	local name = getSystemName(systemFn)
+	local name = getSystemName(system)
 
 	local scheduledPhase
 	if phase then
@@ -847,7 +847,7 @@ function Scheduler:replaceSystem(old, new)
 	oldSystemInfo.run = newSystemFn
 	oldSystemInfo.cleanup = nil
 	oldSystemInfo.initialized = false
-	oldSystemInfo.name = getSystemName(newSystemFn)
+	oldSystemInfo.name = getSystemName(new)
 
 	hooks.systemReplace(self, copy, oldSystemInfo)
 
