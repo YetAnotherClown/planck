@@ -1,7 +1,7 @@
 type Phase = any
 type Pipeline = any
 
-type SystemFn<U...> = ((U...) -> any) | ((U...) -> ())
+type SystemFn<U...> = (U...) -> ()
 type SystemInitializerFn<U...> = (U...) -> SystemFn<U...>
 
 type SystemTable<U...> = {

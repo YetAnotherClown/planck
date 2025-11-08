@@ -16,14 +16,14 @@ import type { EventInstance, EventLike, ExtractEvents } from "./utils";
  * }
  * ```
  */
-export type SystemFn<T extends unknown[]> = (...args: T) => void;
+export type SystemFn<T extends unknown[]> = (...args: T) => void | undefined;
 
 /**
  * A cleanup function that executes when a system is removed from the scheduler.
  * Used for resource cleanup when a system is unscheduled, or in hot-reload
  * scenarios.
  */
-export type CleanupFn<T extends unknown[]> = (...args: T) => void;
+export type CleanupFn<T extends unknown[]> = (...args: T) => void | undefined;
 
 /**
  * The runtime system and optional cleanup function returned from

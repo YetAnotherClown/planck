@@ -13,27 +13,30 @@ type Callback<U...> = utils.Callback<U...>
 
 export type CleanupFn<U...> = (U...) -> ()
 
+export type SystemFn<U...> = (U...) -> ()
+
 export type InitializerResult<U...> = {
-	system: ((U...) -> any)?,
+	system: SystemFn<U...>?,
 	cleanup: CleanupFn<U...>?,
 }
 
-export type SystemFn<U...> =
-	| ((U...) -> any)
-	| ((U...) -> ())
-	| ((U...) -> (U...) -> any)
-	| ((U...) -> ((U...) -> any, CleanupFn<U...>))
+export type InitializerSystemFn<U...> =
+	| ((U...) -> SystemFn<U...>)
+	| ((U...) -> (SystemFn<U...>, CleanupFn<U...>))
 	| ((U...) -> InitializerResult<U...>)
 
 export type SystemTable<U...> = {
-	system: SystemFn<U...>,
+	system: SystemFn<U...> | InitializerSystemFn<U...>,
 	phase: Phase?,
 	name: string?,
 	runConditions: { (U...) -> boolean }?,
 	[any]: any,
 }
 
-export type System<U...> = SystemFn<U...> | SystemTable<U...>
+export type System<U...> =
+	SystemFn<U...>
+	| InitializerSystemFn<U...>
+	| SystemTable<U...>
 
 export type Phase = {
 	PreStartup: Phase,

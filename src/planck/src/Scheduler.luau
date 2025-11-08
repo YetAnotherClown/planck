@@ -20,7 +20,7 @@ local getEventIdentifier = utils.getEventIdentifier
 local recentLogs = {}
 local timeLastLogged = os.clock()
 
---- @type SystemFn ((U...) -> any)
+--- @type SystemFn ((U...) -> ())
 --- @within Scheduler
 --- Standard system function that runs every time it's scheduled
 
