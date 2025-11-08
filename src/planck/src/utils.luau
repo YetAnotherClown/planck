@@ -23,6 +23,10 @@ local function getSystem<U...>(system: any): SystemTable<U...>?
 end
 
 local function getSystemName(system: any): string
+	if type(system) == "table" and system.name then
+		return system.name
+	end
+
 	local name = debug.info(system, "n")
 	if not name or string.len(name) == 0 then
 		local source, line = debug.info(system, "sl")

@@ -102,7 +102,7 @@ function Scheduler:_handleLogs(systemInfo)
 		systemInfo.recentLogs = {}
 	end
 
-	local name = debug.info(systemInfo.system, "n")
+	local name = systemInfo.name
 
 	for _, logMessage in systemInfo.logs do
 		if not systemInfo.recentLogs[logMessage] then
@@ -600,9 +600,6 @@ function Scheduler:addSystem(system, phase)
 	end
 
 	local name = getSystemName(systemFn)
-	if type(system) == "table" and system.name then
-		name = system.name
-	end
 
 	local scheduledPhase
 	if phase then
@@ -763,7 +760,8 @@ function Scheduler:removeSystem(system)
 	)
 
 	if systemInfo.cleanup then
-		local success, err = pcall(systemInfo.cleanup, table.unpack(self._vargs))
+		local success, err =
+			pcall(systemInfo.cleanup, table.unpack(self._vargs))
 		if success then
 			hooks.systemCleanup(self, systemInfo, nil)
 		else
