@@ -11,18 +11,18 @@ type ConnectionLike = utils.ConnectionLike
 type ConnectFn<T, U...> = utils.ConnectFn<T, U...>
 type Callback<U...> = utils.Callback<U...>
 
-export type CleanupFn = () -> ()
+export type CleanupFn<U...> = (U...) -> ()
 
 export type InitializerResult<U...> = {
 	system: ((U...) -> any)?,
-	cleanup: CleanupFn?,
+	cleanup: CleanupFn<U...>?,
 }
 
 export type SystemFn<U...> =
 	| ((U...) -> any)
 	| ((U...) -> ())
-	| ((U...) -> ((U...) -> any))
-	| ((U...) -> (((U...) -> any), CleanupFn))
+	| ((U...) -> (U...) -> any)
+	| ((U...) -> ((U...) -> any, CleanupFn<U...>))
 	| ((U...) -> InitializerResult<U...>)
 
 export type SystemTable<U...> = {

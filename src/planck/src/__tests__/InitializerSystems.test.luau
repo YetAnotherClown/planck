@@ -59,18 +59,18 @@ describe("Initializer Systems", function()
 
 			myScheduler:runPhase(myPhase)
 			expect(initCount).toBe(1)
-			expect(runCount).toBe(0)
+			expect(runCount).toBe(1)
 			expect(myScheduler._systemInfo[initializerSystem].initialized).toBe(
 				true
 			)
 
 			myScheduler:runPhase(myPhase)
 			expect(initCount).toBe(1)
-			expect(runCount).toBe(1)
+			expect(runCount).toBe(2)
 
 			myScheduler:runPhase(myPhase)
 			expect(initCount).toBe(1)
-			expect(runCount).toBe(2)
+			expect(runCount).toBe(3)
 		end)
 
 		test("initializer with cleanup", function()
@@ -99,11 +99,11 @@ describe("Initializer Systems", function()
 
 			myScheduler:runPhase(myPhase)
 			expect(initCount).toBe(1)
-			expect(runCount).toBe(0)
+			expect(runCount).toBe(1)
 			expect(myScheduler._systemInfo[initializerWithCleanup].cleanup).toBeTruthy()
 
 			myScheduler:runPhase(myPhase)
-			expect(runCount).toBe(1)
+			expect(runCount).toBe(2)
 
 			myScheduler:removeSystem(initializerWithCleanup)
 			expect(cleanupCount).toBe(1)
@@ -133,7 +133,7 @@ describe("Initializer Systems", function()
 			myScheduler:runPhase(myPhase)
 
 			expect(initCount).toBe(1)
-			expect(runCount).toBe(3)
+			expect(runCount).toBe(4)
 		end)
 	end)
 
@@ -202,10 +202,10 @@ describe("Initializer Systems", function()
 				true
 			)
 			expect(initCount).toBe(2)
-			expect(runCount).toBe(0)
+			expect(runCount).toBe(1)
 
 			myScheduler:runPhase(myPhase)
-			expect(runCount).toBe(1)
+			expect(runCount).toBe(2)
 		end)
 
 		test("init with run condition", function()
@@ -240,10 +240,10 @@ describe("Initializer Systems", function()
 
 			myScheduler:runPhase(myPhase)
 			expect(initCount).toBe(1)
-			expect(runCount).toBe(0)
+			expect(runCount).toBe(1)
 
 			myScheduler:runPhase(myPhase)
-			expect(runCount).toBe(1)
+			expect(runCount).toBe(2)
 		end)
 
 		test("nested initializer should not run inner", function()
@@ -273,7 +273,7 @@ describe("Initializer Systems", function()
 			myScheduler:runPhase(myPhase)
 
 			expect(initCount).toBe(1)
-			expect(runtimeReturnCount).toBe(2)
+			expect(runtimeReturnCount).toBe(3)
 			expect(innerRunCount).toBe(0)
 		end)
 
@@ -348,10 +348,10 @@ describe("Initializer Systems", function()
 
 			myScheduler:runPhase(myPhase)
 			expect(initCount).toBe(1)
-			expect(runCount).toBe(0)
+			expect(runCount).toBe(1)
 
 			myScheduler:runPhase(myPhase)
-			expect(runCount).toBe(1)
+			expect(runCount).toBe(2)
 
 			myScheduler:removeSystem(tableStyleInit)
 			expect(cleanupCount).toBe(1)
@@ -379,10 +379,10 @@ describe("Initializer Systems", function()
 
 			myScheduler:runPhase(myPhase)
 			expect(initCount).toBe(1)
-			expect(runCount).toBe(0)
+			expect(runCount).toBe(1)
 
 			myScheduler:runPhase(myPhase)
-			expect(runCount).toBe(1)
+			expect(runCount).toBe(2)
 		end)
 
 		test("table with non-functions", function()
@@ -562,11 +562,57 @@ describe("Initializer Systems", function()
 			myScheduler:runPhase(myPhase)
 			expect(newSystemRan).toBe(true)
 		end)
+
+		test("cleanup receives custom args on removeSystem", function()
+			expect.assertions(1)
+
+			local capturedArgs = nil
+
+			local function systemWithArgsInCleanup()
+				return function() end, function(...)
+					capturedArgs = { ... }
+				end
+			end
+
+			local myScheduler = Scheduler.new(1, 2, 3)
+			local myPhase = Phase.new("myPhase")
+
+			myScheduler:insert(myPhase):addSystem(systemWithArgsInCleanup, myPhase)
+
+			myScheduler:runPhase(myPhase) -- Initialize
+			myScheduler:removeSystem(systemWithArgsInCleanup)
+
+			expect(capturedArgs).toEqual({ 1, 2, 3 })
+		end)
+
+		test("cleanup receives custom args on replaceSystem", function()
+			expect.assertions(1)
+
+			local capturedArgs = nil
+
+			local function oldSystem()
+				return function() end, function(...)
+					capturedArgs = { ... }
+				end
+			end
+
+			local function newSystem() end
+
+			local myScheduler = Scheduler.new(1, 2, 3)
+			local myPhase = Phase.new("myPhase")
+
+			myScheduler:insert(myPhase):addSystem(oldSystem, myPhase)
+
+			myScheduler:runPhase(myPhase) -- Initialize
+			myScheduler:replaceSystem(oldSystem, newSystem)
+
+			expect(capturedArgs).toEqual({ 1, 2, 3 })
+		end)
 	end)
 
 	describe("Integration", function()
 		test("with ordering", function()
-			expect.assertions(4)
+			expect.assertions(6)
 
 			local order = {}
 
@@ -594,7 +640,9 @@ describe("Initializer Systems", function()
 
 			myScheduler:runPhase(myPhase)
 			expect(order[1]).toBe("A-init")
-			expect(order[2]).toBe("B-init")
+			expect(order[2]).toBe("A-run")
+			expect(order[3]).toBe("B-init")
+			expect(order[4]).toBe("B-run")
 
 			table.clear(order)
 
@@ -604,7 +652,7 @@ describe("Initializer Systems", function()
 		end)
 
 		test("with dependency graph", function()
-			expect.assertions(4)
+			expect.assertions(6)
 
 			local order = {}
 
@@ -636,7 +684,9 @@ describe("Initializer Systems", function()
 			myScheduler:runPhase(phaseB)
 
 			expect(order[1]).toBe("A-init")
-			expect(order[2]).toBe("B-init")
+			expect(order[2]).toBe("A-run")
+			expect(order[3]).toBe("B-init")
+			expect(order[4]).toBe("B-run")
 
 			table.clear(order)
 

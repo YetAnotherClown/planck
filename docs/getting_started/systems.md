@@ -136,7 +136,7 @@ end
 return renderSystem
 ```
 
-The first time `renderSystem` runs, it creates the query and returns the runtime function. On all future executions, only the returned function runs.
+The first time `renderSystem` runs, it creates the query and returns the runtime function, then immediately executes that runtime function. On all subsequent executions, only the returned function runs.
 
 #### Cleanup
 

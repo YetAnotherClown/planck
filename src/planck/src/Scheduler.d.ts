@@ -23,7 +23,7 @@ export type SystemFn<T extends unknown[]> = (...args: T) => void;
  * Used for resource cleanup when a system is unscheduled, or in hot-reload
  * scenarios.
  */
-export type CleanupFn = () => void;
+export type CleanupFn<T extends unknown[]> = (...args: T) => void;
 
 /**
  * The runtime system and optional cleanup function returned from
@@ -45,16 +45,19 @@ export type CleanupFn = () => void;
  * ```
  */
 export interface InitializerResult<T extends unknown[]> {
-  /** Runtime system function that executes repeatedly after initialization. */
+  /**
+   * Runtime system function that executes immediately after initialization and
+   * on all subsequent frames.
+   */
   system?: SystemFn<T>;
   /** Cleanup function that runs when the system is removed. */
-  cleanup?: CleanupFn;
+  cleanup?: CleanupFn<T>;
 }
 
 /**
  * An initializer system that performs one-time setup and returns the runtime
  * system. The initialization logic runs once on first execution, then the
- * returned function runs on each subsequent execution.
+ * returned function executes immediately and on all subsequent executions.
  *
  * @example
  *
@@ -85,8 +88,8 @@ export interface InitializerResult<T extends unknown[]> {
  */
 export type InitializerSystemFn<T extends unknown[]> = (
   ...args: T
-) => InitializerResult<T> | LuaTuple<[SystemFn<T>, CleanupFn]> | SystemFn<T>;
-
+) => InitializerResult<T> | LuaTuple<[SystemFn<T>, CleanupFn<T>]> | SystemFn<T>;
+ 
 /**
  * Base configuration shared by all system table types. Contains optional
  * metadata and execution conditions.
@@ -127,7 +130,7 @@ export interface SystemTable<T extends unknown[]> extends BaseSystemTable<T> {
  *   // update entities
  * }
  *
- * // Initializer system (setup runs once)
+ * // Initializer system (setup runs once, then inner runs immediately)
  * function movementSystem(world: World): SystemFn<[World]> {
  *   const entities = world.query(Transform, Velocity).cached();
  *   return (world) => {

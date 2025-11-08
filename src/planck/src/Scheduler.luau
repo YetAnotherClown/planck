@@ -117,15 +117,18 @@ function Scheduler:_handleLogs(systemInfo)
 	table.clear(systemInfo.logs)
 end
 
-function Scheduler:runSystem(system)
-	if self:_canRun(system) == false then
-		return
-	end
-
+function Scheduler:runSystem(system, justInitialized)
 	local systemInfo = self._systemInfo[system]
 	local now = os.clock()
 
-	systemInfo.deltaTime = now - (systemInfo.lastTime or now)
+	if justInitialized ~= true then
+		if self:_canRun(system) == false then
+			return
+		end
+
+		systemInfo.deltaTime = now - (systemInfo.lastTime or now)
+	end
+
 	systemInfo.lastTime = now
 
 	if not self._thread then
@@ -142,6 +145,7 @@ function Scheduler:runSystem(system)
 	end
 
 	local didYield = false
+	local hasSystem = false
 
 	local function systemCall()
 		local function noYield()
@@ -190,11 +194,12 @@ function Scheduler:runSystem(system)
 						systemInfo.cleanup = cleanup
 					end
 
+					hasSystem = true
 					return
 				end
 
 				if type(errOrSys) == "table" then
-					local hasSystem = type(errOrSys.system) == "function"
+					hasSystem = type(errOrSys.system) == "function"
 					local hasCleanup = type(errOrSys.cleanup) == "function"
 
 					if hasSystem or hasCleanup then
@@ -270,6 +275,10 @@ function Scheduler:runSystem(system)
 	end
 
 	self:_handleLogs(systemInfo)
+
+	if hasSystem and justInitialized ~= true then
+		self:runSystem(system, true)
+	end
 end
 
 function Scheduler:runPhase(phase)
@@ -338,7 +347,6 @@ end
 --- @return Scheduler
 ---
 --- Runs the System, passing in the arguments of the Scheduler, `U...`.
-
 function Scheduler:run(dependent)
 	if not dependent then
 		error("No dependent specified in Scheduler:run(_)")
@@ -451,7 +459,6 @@ end
 --- local myScheduler = Scheduler.new()
 ---     :insert(myPipeline, RunService, "Heartbeat")
 --- ```
-
 function Scheduler:insert(dependency, instance, event)
 	assert(
 		isPhase(dependency) or isPipeline(dependency),
@@ -497,7 +504,6 @@ end
 --- Initializes the Pipeline and it's Phases within the Scheduler,
 --- ordering the Pipeline explicitly by setting the after Phase/Pipeline
 --- as a dependent.
-
 function Scheduler:insertAfter(dependent, after)
 	assert(
 		isPhase(after) or isPipeline(after),
@@ -537,7 +543,6 @@ end
 --- Initializes the Pipeline and it's Phases within the Scheduler,
 --- ordering the Pipeline explicitly by setting the before Phase/Pipeline
 --- as a dependency.
-
 function Scheduler:insertBefore(dependent, before)
 	assert(
 		isPhase(before) or isPipeline(before),
@@ -572,6 +577,7 @@ end
 --- first execution, which becomes the runtime system. This allows one-time
 --- setup logic without creating separate initialization phases.
 ---
+--- ```lua
 --- local function renderSystem(world, state)
 ---     -- This runs once on first execution
 ---     local renderables = world:query(Transform, Model):cached()
@@ -598,17 +604,14 @@ function Scheduler:addSystem(system, phase)
 		name = system.name
 	end
 
-	local scheduledPhase = (function()
-		if phase then
-			return phase
-		end
-
-		if type(system) == "table" and system.phase then
-			return system.phase
-		end
-
-		return self._defaultPhase
-	end)()
+	local scheduledPhase
+	if phase then
+		scheduledPhase = phase
+	elseif type(system) == "table" and system.phase then
+		scheduledPhase = system.phase
+	else
+		scheduledPhase = self._defaultPhase
+	end
 
 	local systemInfo = {
 		system = systemFn,
@@ -760,7 +763,7 @@ function Scheduler:removeSystem(system)
 	)
 
 	if systemInfo.cleanup then
-		local success, err = pcall(systemInfo.cleanup)
+		local success, err = pcall(systemInfo.cleanup, table.unpack(self._vargs))
 		if success then
 			hooks.systemCleanup(self, systemInfo, nil)
 		else
@@ -816,7 +819,8 @@ function Scheduler:replaceSystem(old, new)
 	)
 
 	if oldSystemInfo.cleanup then
-		local success, err = pcall(oldSystemInfo.cleanup)
+		local success, err =
+			pcall(oldSystemInfo.cleanup, table.unpack(self._vargs))
 		if success then
 			hooks.systemCleanup(self, oldSystemInfo, nil)
 		else
@@ -876,8 +880,7 @@ end
 --- @param fn (U...) -> boolean
 ---
 --- Adds a Run Condition which the Scheduler will check before
---- any Systems within any Phases apart of this Pipeline are ran.\
-
+--- any Systems within any Phases apart of this Pipeline are ran.
 function Scheduler:addRunCondition(dependent, fn)
 	local system = getSystem(dependent)
 	if system then
