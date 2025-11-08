@@ -226,6 +226,7 @@ function Scheduler:runSystem(system, justInitialized)
 				)
 				table.insert(systemInfo.logs, err)
 				hooks.systemError(self, systemInfo, err)
+				systemInfo.initialized = true
 			end
 		end
 

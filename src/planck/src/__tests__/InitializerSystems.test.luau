@@ -154,58 +154,12 @@ describe("Initializer Systems", function()
 			myScheduler:insert(myPhase):addSystem(brokenSystem, myPhase)
 
 			myScheduler:runPhase(myPhase)
-			expect(myScheduler._systemInfo[brokenSystem].initialized).toBe(
-				false
-			)
+			expect(myScheduler._systemInfo[brokenSystem].initialized).toBe(true)
 			expect(attemptCount).toBe(1)
 
 			myScheduler:runPhase(myPhase)
-			expect(myScheduler._systemInfo[brokenSystem].initialized).toBe(
-				false
-			)
+			expect(myScheduler._systemInfo[brokenSystem].initialized).toBe(true)
 			expect(attemptCount).toBe(2)
-		end)
-
-		test("retry failed init", function()
-			expect.assertions(6)
-
-			local shouldFail = true
-			local initCount = 0
-			local runCount = 0
-
-			local function retryableSystem()
-				initCount += 1
-				if shouldFail then
-					return 123
-				else
-					return function()
-						runCount += 1
-					end
-				end
-			end
-
-			local myScheduler = Scheduler.new()
-			local myPhase = Phase.new("myPhase")
-
-			myScheduler:insert(myPhase):addSystem(retryableSystem, myPhase)
-
-			myScheduler:runPhase(myPhase)
-			expect(myScheduler._systemInfo[retryableSystem].initialized).toBe(
-				false
-			)
-			expect(initCount).toBe(1)
-
-			shouldFail = false
-
-			myScheduler:runPhase(myPhase)
-			expect(myScheduler._systemInfo[retryableSystem].initialized).toBe(
-				true
-			)
-			expect(initCount).toBe(2)
-			expect(runCount).toBe(1)
-
-			myScheduler:runPhase(myPhase)
-			expect(runCount).toBe(2)
 		end)
 
 		test("init with run condition", function()
@@ -291,7 +245,7 @@ describe("Initializer Systems", function()
 
 			myScheduler:runPhase(myPhase)
 			expect(myScheduler._systemInfo[invalidNilSystem].initialized).toBe(
-				false
+				true
 			)
 		end)
 
@@ -399,7 +353,7 @@ describe("Initializer Systems", function()
 
 			myScheduler:runPhase(myPhase)
 			expect(myScheduler._systemInfo[invalidTableSystem].initialized).toBe(
-				false
+				true
 			)
 		end)
 
@@ -427,7 +381,9 @@ describe("Initializer Systems", function()
 			-- First run: startup logic executes
 			myScheduler:runPhase(myPhase)
 			expect(startupRunCount).toBe(1)
-			expect(myScheduler._systemInfo[startupSystem].initialized).toBe(true)
+			expect(myScheduler._systemInfo[startupSystem].initialized).toBe(
+				true
+			)
 
 			-- Second run: original function runs again (startup-only pattern)
 			myScheduler:runPhase(myPhase)
@@ -452,7 +408,9 @@ describe("Initializer Systems", function()
 			myScheduler:insert(myPhase):addSystem(invalidSystem, myPhase)
 
 			myScheduler:runPhase(myPhase)
-			expect(myScheduler._systemInfo[invalidSystem].initialized).toBe(false)
+			expect(myScheduler._systemInfo[invalidSystem].initialized).toBe(
+				true
+			)
 		end)
 	end)
 
@@ -577,7 +535,9 @@ describe("Initializer Systems", function()
 			local myScheduler = Scheduler.new(1, 2, 3)
 			local myPhase = Phase.new("myPhase")
 
-			myScheduler:insert(myPhase):addSystem(systemWithArgsInCleanup, myPhase)
+			myScheduler
+				:insert(myPhase)
+				:addSystem(systemWithArgsInCleanup, myPhase)
 
 			myScheduler:runPhase(myPhase) -- Initialize
 			myScheduler:removeSystem(systemWithArgsInCleanup)
