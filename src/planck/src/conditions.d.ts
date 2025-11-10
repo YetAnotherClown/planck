@@ -64,6 +64,6 @@ export function onEvent<T extends EventLike>(
 
 /** Inverses a given condition. */
 export const isNot: <T extends unknown[]>(
-  func: Condition<T>,
+  fn: Condition<T>,
   ...any: any[]
 ) => Condition<T>;
