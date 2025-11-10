@@ -116,6 +116,51 @@ local scheduler = Scheduler.new(world, state)
 
 This allows us to bulk add systems to the Scheduler. When we learn about Phases, this will also allow us to bulk set what phase these systems run on.
 
+### Initializer Systems
+
+Sometimes you need to do one-time setup when a system first runs, like caching a query or creating a connection. Initializer systems let you do this by returning a function on their first execution.
+
+```lua title="renderSystem.luau"
+local function renderSystem(world, state)
+    -- This runs once on first execution
+    local renderables = world:query(Transform, Model)
+
+    -- Return the function that runs on each subsequent execution
+    return function(world, state)
+        for id, transform, model in renderables do
+            render(transform, model)
+        end
+    end
+end
+
+return renderSystem
+```
+
+The first time `renderSystem` runs, it creates the query and returns the runtime function, then immediately executes that runtime function. On all subsequent executions, only the returned function runs.
+
+#### Cleanup
+
+If your system needs to clean up resources (like connections), you can return a cleanup function too:
+
+```lua title="networkSystem.luau"
+local function networkSystem(world, state)
+    local connection = Players.PlayerAdded:Connect(function(player)
+        -- Handle player joining
+    end)
+
+    return function(world, state)
+        -- Runtime logic
+    end, function()
+        -- Cleanup runs when system is removed
+        connection:Disconnect()
+    end
+end
+
+return networkSystem
+```
+
+The cleanup function will run automatically when you call `scheduler:removeSystem(networkSystem)`.
+
 ## What's Next?
 
 Now that we have systems, we should learn how to properly manage their order

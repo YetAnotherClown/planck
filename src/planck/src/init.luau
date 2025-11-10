@@ -11,17 +11,32 @@ type ConnectionLike = utils.ConnectionLike
 type ConnectFn<T, U...> = utils.ConnectFn<T, U...>
 type Callback<U...> = utils.Callback<U...>
 
-export type SystemFn<U...> = ((U...) -> any) | ((U...) -> ())
+export type CleanupFn<U...> = (U...) -> ()
+
+export type SystemFn<U...> = (U...) -> ()
+
+export type InitializerResult<U...> = {
+	system: SystemFn<U...>?,
+	cleanup: CleanupFn<U...>?,
+}
+
+export type InitializerSystemFn<U...> =
+	| ((U...) -> SystemFn<U...>)
+	| ((U...) -> (SystemFn<U...>, CleanupFn<U...>))
+	| ((U...) -> InitializerResult<U...>)
 
 export type SystemTable<U...> = {
-	system: SystemFn<U...>,
+	system: SystemFn<U...> | InitializerSystemFn<U...>,
 	phase: Phase?,
 	name: string?,
 	runConditions: { (U...) -> boolean }?,
 	[any]: any,
 }
 
-export type System<U...> = SystemFn<U...> | SystemTable<U...>
+export type System<U...> =
+	SystemFn<U...>
+	| InitializerSystemFn<U...>
+	| SystemTable<U...>
 
 export type Phase = {
 	PreStartup: Phase,
@@ -40,14 +55,16 @@ export type Pipeline = {
 	new: (debugName: string?) -> Pipeline,
 }
 
-type Plugin<U...> = {
-	build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
-	[any]: any,
-} | {
-	build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
-	cleanup: (self: Plugin<U...>) -> (),
-	[any]: any,
-}
+type Plugin<U...> =
+	{
+		build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
+		[any]: any,
+	}
+	| {
+		build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
+		cleanup: (self: Plugin<U...>) -> (),
+		[any]: any,
+	}
 
 export type Scheduler<U...> = {
 	addPlugin: (self: Scheduler<U...>, plugin: Plugin<U...>) -> Scheduler<U...>,

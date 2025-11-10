@@ -20,13 +20,24 @@ local getEventIdentifier = utils.getEventIdentifier
 local recentLogs = {}
 local timeLastLogged = os.clock()
 
---- @type SystemFn ((U...) -> any)
+--- @type SystemFn ((U...) -> ())
 --- @within Scheduler
+--- Standard system function that runs every time it's scheduled
+
+--- @type InitializerSystemFn ((U...) -> (SystemFn<U...> | (SystemFn<U...>, CleanupFn)))
+--- @within Scheduler
+--- Initializer system that returns the runtime function, optionally with cleanup
+
+--- @type CleanupFn (() -> ())
+--- @within Scheduler
+--- Cleanup function called when system is removed
 
 --- @interface SystemTable
 --- @within Scheduler
---- .system SystemFn<U...>
+--- .system SystemFn<U...> | InitializerSystemFn<U...>
 --- .phase Phase?
+--- .name string?
+--- .runConditions {RunCondition}?
 --- .[any] any
 
 --- @type System SystemFn<U...> | SystemTable<U...>
@@ -91,7 +102,7 @@ function Scheduler:_handleLogs(systemInfo)
 		systemInfo.recentLogs = {}
 	end
 
-	local name = debug.info(systemInfo.system, "n")
+	local name = systemInfo.name
 
 	for _, logMessage in systemInfo.logs do
 		if not systemInfo.recentLogs[logMessage] then
@@ -106,15 +117,18 @@ function Scheduler:_handleLogs(systemInfo)
 	table.clear(systemInfo.logs)
 end
 
-function Scheduler:runSystem(system)
-	if self:_canRun(system) == false then
-		return
-	end
-
+function Scheduler:runSystem(system, justInitialized)
 	local systemInfo = self._systemInfo[system]
 	local now = os.clock()
 
-	systemInfo.deltaTime = now - (systemInfo.lastTime or now)
+	if justInitialized ~= true then
+		if self:_canRun(system) == false then
+			return
+		end
+
+		systemInfo.deltaTime = now - (systemInfo.lastTime or now)
+	end
+
 	systemInfo.lastTime = now
 
 	if not self._thread then
@@ -131,20 +145,23 @@ function Scheduler:runSystem(system)
 	end
 
 	local didYield = false
+	local hasSystem = false
 
 	local function systemCall()
 		local function noYield()
-			local success, err
+			local success, errOrSys, cleanup
 			coroutine.resume(self._thread, function()
-				success, err = xpcall(system, function(e)
+				success, errOrSys, cleanup = xpcall(function()
+					return systemInfo.run(table.unpack(self._vargs))
+				end, function(e)
 					return debug.traceback(e)
-				end, table.unpack(self._vargs))
+				end)
 			end)
 
 			if success == false then
 				didYield = true
-				table.insert(systemInfo.logs, err)
-				hooks.systemError(self, systemInfo, err)
+				table.insert(systemInfo.logs, errOrSys)
+				hooks.systemError(self, systemInfo, errOrSys)
 				return
 			end
 
@@ -161,6 +178,55 @@ function Scheduler:runSystem(system)
 					systemInfo,
 					debug.traceback(self._thread, errMessage, 2)
 				)
+				return
+			end
+
+			if not systemInfo.initialized then
+				if errOrSys == nil and cleanup == nil then
+					systemInfo.initialized = true
+					return
+				end
+
+				if type(errOrSys) == "function" then
+					systemInfo.run = errOrSys
+					systemInfo.initialized = true
+					if type(cleanup) == "function" then
+						systemInfo.cleanup = cleanup
+					end
+
+					hasSystem = true
+					return
+				end
+
+				if type(errOrSys) == "table" then
+					hasSystem = type(errOrSys.system) == "function"
+					local hasCleanup = type(errOrSys.cleanup) == "function"
+
+					if hasSystem or hasCleanup then
+						if hasSystem then
+							systemInfo.run = errOrSys.system
+						end
+
+						if hasCleanup then
+							systemInfo.cleanup = errOrSys.cleanup
+						end
+
+						systemInfo.initialized = true
+						return
+					end
+				end
+
+				local err = string.format(
+					"System '%s' initializer returned invalid type. "
+						.. "Expected: function, {system?, cleanup?}, or (function, function). "
+						.. "Got: %s, %s",
+					systemInfo.name,
+					type(errOrSys),
+					type(cleanup)
+				)
+				table.insert(systemInfo.logs, err)
+				hooks.systemError(self, systemInfo, err)
+				systemInfo.initialized = true
 			end
 		end
 
@@ -210,6 +276,10 @@ function Scheduler:runSystem(system)
 	end
 
 	self:_handleLogs(systemInfo)
+
+	if hasSystem and justInitialized ~= true then
+		self:runSystem(system, true)
+	end
 end
 
 function Scheduler:runPhase(phase)
@@ -278,7 +348,6 @@ end
 --- @return Scheduler
 ---
 --- Runs the System, passing in the arguments of the Scheduler, `U...`.
-
 function Scheduler:run(dependent)
 	if not dependent then
 		error("No dependent specified in Scheduler:run(_)")
@@ -391,7 +460,6 @@ end
 --- local myScheduler = Scheduler.new()
 ---     :insert(myPipeline, RunService, "Heartbeat")
 --- ```
-
 function Scheduler:insert(dependency, instance, event)
 	assert(
 		isPhase(dependency) or isPipeline(dependency),
@@ -437,7 +505,6 @@ end
 --- Initializes the Pipeline and it's Phases within the Scheduler,
 --- ordering the Pipeline explicitly by setting the after Phase/Pipeline
 --- as a dependent.
-
 function Scheduler:insertAfter(dependent, after)
 	assert(
 		isPhase(after) or isPipeline(after),
@@ -477,7 +544,6 @@ end
 --- Initializes the Pipeline and it's Phases within the Scheduler,
 --- ordering the Pipeline explicitly by setting the before Phase/Pipeline
 --- as a dependency.
-
 function Scheduler:insertBefore(dependent, before)
 	assert(
 		isPhase(before) or isPipeline(before),
@@ -499,13 +565,34 @@ function Scheduler:insertBefore(dependent, before)
 	return self
 end
 
---- @method addSystems
+--- @method addSystem
 --- @within Scheduler
---- @param systems System
+--- @param system System
 --- @param phase Phase?
+--- @return Scheduler
 ---
 --- Adds the System to the Scheduler, scheduling it to be ran
 --- implicitly within the provided Phase or on the default Main phase.
+---
+--- **Initializer Systems**: Systems can optionally return a function on their
+--- first execution, which becomes the runtime system. This allows one-time
+--- setup logic without creating separate initialization phases.
+---
+--- ```lua
+--- local function renderSystem(world, state)
+---     -- This runs once on first execution
+---     local renderables = world:query(Transform, Model):cached()
+---
+---     -- This runs on each subsequent execution
+---     return function(world, state)
+---         for id, transform, model in renderables do
+---             render(transform, model)
+---         end
+---     end, function()
+---         -- Optional cleanup logic runs on removeSystem
+---     end
+--- end
+--- ```
 function Scheduler:addSystem(system, phase)
 	local systemFn = getSystem(system)
 
@@ -513,25 +600,26 @@ function Scheduler:addSystem(system, phase)
 		error("Unknown system passed to Scheduler:addSystem(unknown, phase?)")
 	end
 
-	local name = getSystemName(systemFn)
-	if type(system) == "table" and system.name then
-		name = system.name
+	local name = getSystemName(system)
+
+	local scheduledPhase
+	if phase then
+		scheduledPhase = phase
+	elseif type(system) == "table" and system.phase then
+		scheduledPhase = system.phase
+	else
+		scheduledPhase = self._defaultPhase
 	end
 
 	local systemInfo = {
 		system = systemFn,
-		phase = phase,
+		run = systemFn,
+		cleanup = nil,
+		phase = scheduledPhase,
 		name = name,
 		logs = {},
+		initialized = false,
 	}
-
-	if not phase then
-		if type(system) == "table" and system.phase then
-			systemInfo.phase = system.phase
-		else
-			systemInfo.phase = self._defaultPhase
-		end
-	end
 
 	self._systemInfo[systemFn] = systemInfo
 
@@ -599,7 +687,7 @@ function Scheduler:editSystem(system, newPhase)
 	local systemInfo = self._systemInfo[systemFn]
 	assert(
 		systemInfo,
-		"Attempt to remove a non-exist system in Scheduler:removeSystem(_)"
+		"Attempt to edit a non-existent system in Scheduler:editSystem(_)"
 	)
 
 	assert(
@@ -638,15 +726,55 @@ end
 --- @method removeSystem
 --- @within Scheduler
 --- @param system System
+--- @return Scheduler
 ---
 --- Removes the System from the Scheduler.
+---
+--- If the system provided a cleanup function during initialization,
+--- that cleanup function will be executed before removal.
+---
+--- ```lua
+--- -- System with cleanup
+--- local function networkSystem(world, state)
+---     local connection = Players.PlayerAdded:Connect(function(player)
+---         -- Player joined logic
+---     end)
+---
+---     return function(world, state)
+---         -- Runtime logic
+---     end, function()
+---         -- Cleanup runs on removeSystem
+---         connection:Disconnect()
+---     end
+--- end
+---
+--- scheduler:addSystem(networkSystem, Phase.Update)
+--- -- Later...
+--- scheduler:removeSystem(networkSystem) -- Cleanup executes here
+--- ```
 function Scheduler:removeSystem(system)
 	local systemFn = getSystem(system)
 	local systemInfo = self._systemInfo[systemFn]
 	assert(
 		systemInfo,
-		"Attempt to remove a non-exist system in Scheduler:removeSystem(_)"
+		"Attempt to remove a non-existent system in Scheduler:removeSystem(_)"
 	)
+
+	if systemInfo.cleanup then
+		local success, err =
+			pcall(systemInfo.cleanup, table.unpack(self._vargs))
+		if success then
+			hooks.systemCleanup(self, systemInfo, nil)
+		else
+			local errMsg = string.format(
+				"Cleanup failed for system '%s': %s",
+				systemInfo.name,
+				tostring(err)
+			)
+			hooks.systemError(self, systemInfo, errMsg)
+			hooks.systemCleanup(self, systemInfo, errMsg)
+		end
+	end
 
 	local systems = self._phaseToSystems[systemInfo.phase]
 
@@ -689,6 +817,22 @@ function Scheduler:replaceSystem(old, new)
 		"Attempt to pass non-system in Scheduler:replaceSystem(_, unknown)"
 	)
 
+	if oldSystemInfo.cleanup then
+		local success, err =
+			pcall(oldSystemInfo.cleanup, table.unpack(self._vargs))
+		if success then
+			hooks.systemCleanup(self, oldSystemInfo, nil)
+		else
+			local errMsg = string.format(
+				"Cleanup failed for system '%s': %s",
+				oldSystemInfo.name,
+				tostring(err)
+			)
+			hooks.systemError(self, oldSystemInfo, errMsg)
+			hooks.systemCleanup(self, oldSystemInfo, errMsg)
+		end
+	end
+
 	local systems = self._phaseToSystems[oldSystemInfo.phase]
 
 	local index = table.find(systems, oldSystemFn)
@@ -700,7 +844,10 @@ function Scheduler:replaceSystem(old, new)
 	local copy = table.clone(oldSystemInfo)
 
 	oldSystemInfo.system = newSystemFn
-	oldSystemInfo.name = getSystemName(newSystemFn)
+	oldSystemInfo.run = newSystemFn
+	oldSystemInfo.cleanup = nil
+	oldSystemInfo.initialized = false
+	oldSystemInfo.name = getSystemName(new)
 
 	hooks.systemReplace(self, copy, oldSystemInfo)
 
@@ -732,8 +879,7 @@ end
 --- @param fn (U...) -> boolean
 ---
 --- Adds a Run Condition which the Scheduler will check before
---- any Systems within any Phases apart of this Pipeline are ran.\
-
+--- any Systems within any Phases apart of this Pipeline are ran.
 function Scheduler:addRunCondition(dependent, fn)
 	local system = getSystem(dependent)
 	if system then

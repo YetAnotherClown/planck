@@ -1,15 +1,16 @@
 type Phase = any
 type Pipeline = any
 
-type SystemFn<U...> = ((U...) -> any) | ((U...) -> ())
+type SystemFn<U...> = (U...) -> ()
+type SystemInitializerFn<U...> = (U...) -> SystemFn<U...>
 
 type SystemTable<U...> = {
-	system: SystemFn<U...>,
+	system: SystemFn<U...> | SystemInitializerFn<U...>,
 	phase: Phase?,
 	[any]: any,
 }
 
-type System<U...> = SystemFn<U...> | SystemTable<U...>
+type System<U...> = SystemFn<U...> | SystemInitializerFn<U...> | SystemTable<U...>
 
 local function getSystem<U...>(system: any): SystemTable<U...>?
 	if type(system) == "function" then
@@ -22,9 +23,15 @@ local function getSystem<U...>(system: any): SystemTable<U...>?
 end
 
 local function getSystemName(system: any): string
-	local name = debug.info(system, "n")
+	if type(system) == "table" and system.name then
+		return system.name
+	end
+
+	local fn = type(system) == "table" and system.system or system
+
+	local name = debug.info(fn, "n")
 	if not name or string.len(name) == 0 then
-		local source, line = debug.info(system, "sl")
+		local source, line = debug.info(fn, "sl")
 		name = `{source}:{line}`
 	end
 
@@ -94,19 +101,23 @@ export type Callback<U...> = (U...) -> ...any
 export type ConnectFn<T, U...> = (callback: (U...) -> ...any) -> T
 export type GenericTable = { [any]: any }
 
-export type SignalLike<U...> = {
-	connect: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
-	[any]: any,
-} | {
-	Connect: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
-	[any]: any,
-} | {
-	on: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
-	[any]: any,
-} | {
-	On: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
-	[any]: any,
-}
+export type SignalLike<U...> =
+	{
+		connect: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
+		[any]: any,
+	}
+	| {
+		Connect: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
+		[any]: any,
+	}
+	| {
+		on: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
+		[any]: any,
+	}
+	| {
+		On: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
+		[any]: any,
+	}
 
 type GetConnectFn<U...> =
 	-- RBXScriptSignal & nil
