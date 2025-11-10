@@ -1,12 +1,12 @@
-import { EventInstance, EventLike, ExtractEvents } from "./utils";
+import type { EventInstance, EventLike, ExtractEvents } from "./utils";
 
-export type Condition<T extends unknown[] = unknown[]> = (
-  ...args: T
-) => boolean;
+export type Condition<T extends unknown[] = unknown[]> =
+  | ((...args: T) => boolean)
+  | LuaTuple<[Condition<T>, ...Array<any>]>;
 
 /**
- * A Throttle condition which checks whether the amount of
- * time given has passed or not.
+ * A Throttle condition which checks whether the amount of time given has passed
+ * or not.
  */
 export const timePassed: (time: number) => Condition;
 
@@ -24,11 +24,13 @@ type CollectEvents<T extends unknown[]> = () => IterableFunction<
 /**
  * Checks for any new events and allows for the collection of those events.
  *
- * Read [OnEvent](https://yetanotherclown.github.io/planck/docs/design/conditions/#on-event) for more information.
+ * Read
+ * [OnEvent](https://yetanotherclown.github.io/planck/docs/design/conditions/#on-event)
+ * for more information.
  */
 export function onEvent<T extends EventInstance, E extends ExtractEvents<T>>(
   instance: T,
-  event: E
+  event: E,
 ): LuaTuple<
   [hasNewEvent: Condition, collectEvents: CollectEvents<ExtractEvent<T>[E]>]
 >;
@@ -36,11 +38,13 @@ export function onEvent<T extends EventInstance, E extends ExtractEvents<T>>(
 /**
  * Checks for any new events and allows for the collection of those events.
  *
- * Read [OnEvent](https://yetanotherclown.github.io/planck/docs/design/conditions/#on-event) for more information.
+ * Read
+ * [OnEvent](https://yetanotherclown.github.io/planck/docs/design/conditions/#on-event)
+ * for more information.
  */
 export function onEvent<T extends EventLike>(
   instance: EventInstance,
-  event: T
+  event: T,
 ): LuaTuple<
   [hasNewEvent: Condition, collectEvents: CollectEvents<ExtractEventArgs<T>>]
 >;
@@ -48,16 +52,18 @@ export function onEvent<T extends EventLike>(
 /**
  * Checks for any new events and allows for the collection of those events.
  *
- * Read [OnEvent](https://yetanotherclown.github.io/planck/docs/design/conditions/#on-event) for more information.
+ * Read
+ * [OnEvent](https://yetanotherclown.github.io/planck/docs/design/conditions/#on-event)
+ * for more information.
  */
 export function onEvent<T extends EventLike>(
-  instance: T
+  instance: T,
 ): LuaTuple<
   [hasNewEvent: Condition, collectEvents: CollectEvents<ExtractEventArgs<T>>]
 >;
 
 /** Inverses a given condition. */
 export const isNot: <T extends unknown[]>(
-  fn: Condition<T>,
+  func: Condition<T>,
   ...any: any[]
 ) => Condition<T>;
