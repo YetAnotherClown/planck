@@ -44,7 +44,7 @@ export type CleanupFn<T extends unknown[]> = (...args: T) => void | undefined;
  * };
  * ```
  */
-export interface InitializerResult<T extends unknown[]> {
+export type InitializerResult<T extends unknown[]> = {
   /**
    * Runtime system function that executes immediately after initialization and
    * on all subsequent frames.
@@ -52,7 +52,7 @@ export interface InitializerResult<T extends unknown[]> {
   system?: SystemFn<T>;
   /** Cleanup function that runs when the system is removed. */
   cleanup?: CleanupFn<T>;
-}
+} & ({ system: SystemFn<T> } | { cleanup: CleanupFn<T> });
 
 /**
  * An initializer system that performs one-time setup and returns the runtime
