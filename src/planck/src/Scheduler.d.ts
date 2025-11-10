@@ -89,7 +89,7 @@ export type InitializerResult<T extends unknown[]> = {
 export type InitializerSystemFn<T extends unknown[]> = (
   ...args: T
 ) => InitializerResult<T> | LuaTuple<[SystemFn<T>, CleanupFn<T>]> | SystemFn<T>;
- 
+
 /**
  * Base configuration shared by all system table types. Contains optional
  * metadata and execution conditions.
@@ -102,7 +102,7 @@ export interface BaseSystemTable<T extends unknown[]> {
   /** The execution phase for this system. Defaults to Main phase. */
   phase?: Phase;
   /** Conditions that must be met for the system to execute. */
-  runConditions?: Condition<T>[];
+  runConditions?: Condition<T>[] | LuaTuple<[Condition<T>, ...any[]]>;
 }
 
 /**
@@ -244,7 +244,7 @@ export class Scheduler<T extends unknown[]> {
    * );
    * ```
    */
-  insert<T extends EventInstance>(phase: Phase, instance: T, event: ExtractEvents<T>): this;
+  insert<E extends EventInstance>(phase: Phase, instance: E, event: ExtractEvents<E>): this;
   /**
    * Initializes the Phase within the Scheduler, ordering it implicitly by
    * setting it as a dependent of the previous Phase/Pipeline, and scheduling it
@@ -272,7 +272,7 @@ export class Scheduler<T extends unknown[]> {
    * );
    * ```
    */
-  insert<T extends EventInstance>(pipeline: Pipeline, instance: T, event: ExtractEvents<T>): this;
+  insert<E extends EventInstance>(pipeline: Pipeline, instance: E, event: ExtractEvents<E>): this;
   /**
    * Initializes the Pipeline and it's Phases within the Scheduler, ordering the
    * Pipeline implicitly by setting it as a dependent of the previous
@@ -314,17 +314,29 @@ export class Scheduler<T extends unknown[]> {
    * Adds a Run Condition which the Scheduler will check before this System is
    * ran.
    */
-  addRunCondition(system: System<T>, fn: Condition<T>, ...args: any): this;
+  addRunCondition(
+    system: System<T>,
+    fn: Condition<T> | LuaTuple<[Condition<T>, ...any[]]>,
+    ...args: any
+  ): this;
   /**
    * Adds a Run Condition which the Scheduler will check before any Systems
    * within this Phase are ran.
    */
-  addRunCondition(phase: Phase, fn: Condition<T>, ...args: any): this;
+  addRunCondition(
+    phase: Phase,
+    fn: Condition<T> | LuaTuple<[Condition<T>, ...any[]]>,
+    ...args: any
+  ): this;
   /**
    * Adds a Run Condition which the Scheduler will check before any Systems
    * within any Phases apart of this Pipeline are ran.
    */
-  addRunCondition(pipeline: Pipeline, fn: Condition<T>, ...args: any): this;
+  addRunCondition(
+    pipeline: Pipeline,
+    fn: Condition<T> | LuaTuple<[Condition<T>, ...any[]]>,
+    ...args: any
+  ): this;
 
   /** Runs all Systems tagged with the Phase in order. */
   run(system: Phase): this;
