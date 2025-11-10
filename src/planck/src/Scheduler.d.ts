@@ -89,7 +89,7 @@ export type InitializerResult<T extends unknown[]> = {
 export type InitializerSystemFn<T extends unknown[]> = (
   ...args: T
 ) => InitializerResult<T> | LuaTuple<[SystemFn<T>, CleanupFn<T>]> | SystemFn<T>;
- 
+
 /**
  * Base configuration shared by all system table types. Contains optional
  * metadata and execution conditions.
@@ -244,7 +244,7 @@ export class Scheduler<T extends unknown[]> {
    * );
    * ```
    */
-  insert<T extends EventInstance>(phase: Phase, instance: T, event: ExtractEvents<T>): this;
+  insert<E extends EventInstance>(phase: Phase, instance: E, event: ExtractEvents<E>): this;
   /**
    * Initializes the Phase within the Scheduler, ordering it implicitly by
    * setting it as a dependent of the previous Phase/Pipeline, and scheduling it
@@ -272,7 +272,7 @@ export class Scheduler<T extends unknown[]> {
    * );
    * ```
    */
-  insert<T extends EventInstance>(pipeline: Pipeline, instance: T, event: ExtractEvents<T>): this;
+  insert<E extends EventInstance>(pipeline: Pipeline, instance: E, event: ExtractEvents<E>): this;
   /**
    * Initializes the Pipeline and it's Phases within the Scheduler, ordering the
    * Pipeline implicitly by setting it as a dependent of the previous
