@@ -4,6 +4,9 @@ description: An introduction to Systems in Planck
 sidebar_position: 2
 ---
 
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
 # Systems
 
 When designing systems in ECS, we should be mindful of the composition of systems. In a system, we will usually perform queries;
@@ -38,6 +41,8 @@ them to be generic.
 
 Let's make a system first, and apply these principles after.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local world = require("@shared/world")
 local scheduler = require("@shared/scheduler")
@@ -78,7 +83,48 @@ local function handleEnemies()
     end
 end
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import world from "shared/world";
+import scheduler from "shared/scheduler";
 
+import { interval } from "shared/interval";
+const throttle = interval(10);
+
+const Enemy = world.component();
+const Health = world.component<number>();
+const Position = world.component<Vector3>();
+const Velocity = world.component<Vector3>();
+
+function handleEnemies() {
+    // Spawn enemies every 10 seconds
+    if (throttle()) {
+        const entity = world.entity();
+
+        world.add(entity, Enemy);
+        world.set(entity, Health, 100);
+        world.set(entity, Position, Vector3.zero);
+        world.set(entity, Velocity, Vector3.new(1, 0, 1));
+    }
+
+    // Move enemies every frame
+    for (const [entity, position, velocity] of world.query(Position, Velocity).with(Enemy)) {
+        const deltaTime = scheduler.getDeltaTime();
+
+        world.set(entity, Position, position * deltaTime * velocity);
+    }
+
+    // Despawn enemies with 0 health
+    for (const [entity, health] of world.query(Health).with(Enemy)) {
+        if (health === 0) {
+            world.delete(entity);
+        }
+    }
+}
+```
+</TabItem>
+</Tabs>
 This system handles our enemies in our game, it has 3 distinct responsibilities:
 spawning enemies, moving enemies, and despawning enemies.
 
@@ -88,6 +134,8 @@ mechanics onto our enemies.
 
 We should split this system up into multiple, single responsibility systems.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local world = require("@shared/world")
 
@@ -111,7 +159,36 @@ local function spawnEnemies()
     end
 end
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import world from "shared/world";
 
+import { interval } from "shared/interval";
+const throttle = interval(10);
+
+const Enemy = world.component();
+const Health = world.component<number>();
+const Position = world.component<Vector3>();
+const Velocity = world.component<Vector3>();
+
+function spawnEnemies() {
+    // Spawn enemies every 10 seconds
+    if (throttle()) {
+        const entity = world.entity();
+
+        world.add(entity, Enemy);
+        world.set(entity, Health, 100);
+        world.set(entity, Position, Vector3.zero);
+        world.set(entity, Velocity, Vector3.new(1, 0, 1));
+    }
+}
+```
+</TabItem>
+</Tabs>
+
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local world = require("@shared/world")
 local scheduler = require("@shared/scheduler")
@@ -131,7 +208,31 @@ local function moveEnemies()
     end
 end
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import world from "shared/world";
+import scheduler from "shared/scheduler";
 
+const Enemy = world.component();
+const Position = world.component<Vector3>();
+const Velocity = world.component<Vector3>();
+
+function moveEnemies() {
+    // Move enemies every frame
+    for (const [entity, position, velocity] of world.query(Position, Velocity).with(Enemy)) {
+        const deltaTime = scheduler.getDeltaTime();
+
+        world.set(entity, Position, position * deltaTime * velocity);
+    }
+}
+```
+</TabItem>
+</Tabs>
+
+
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local world = require("@shared/world")
 
@@ -147,11 +248,31 @@ local function despawnEnemies()
     end
 end
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import world from "shared/world";
 
+const Enemy = world.component();
+const Health = world.component<number>();
+
+function despawnEnemies() {
+    // Despawn enemies with 0 health
+    for (const [entity, health] of world.query(Health).with(Enemy)) {
+        if (health === 0) {
+            world.delete(entity);
+        }
+    }
+}
+```
+</TabItem>
+</Tabs>
 When designing systems, we should also think about reusability: how can you reuse a system in other parts of your game?
 
 Well, we might want to move other models besides just Enemies. We can redesign our `moveEnemies` system to be generic.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local world = require("@shared/world")
 local scheduler = require("@shared/scheduler")
@@ -171,7 +292,27 @@ local function moveModels()
     end
 end
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import world from "shared/world";
+import { Phase } from "@rbxts/planck";
 
+const Enemy = world.component();
+const Position = world.component<Vector3>();
+const Velocity = world.component<Vector3>();
+
+function moveModels() {
+    // Move models every frame
+    for (const [entity, position, velocity] of world.query(Position, Velocity)) {
+        const deltaTime = scheduler.getDeltaTime();
+
+        world.set(entity, Position, position * deltaTime * velocity);
+    }
+}
+```
+</TabItem>
+</Tabs>
 ## What's Next?
 
 Now that we know how to design Systems, we should learn more about Phase and Pipelines.

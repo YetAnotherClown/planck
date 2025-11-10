@@ -4,6 +4,9 @@ description: An introduction to Phases in Planck
 sidebar_position: 4
 ---
 
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
 # Phases
 
 In Roblox, you might be familiar with the [RunService](https://create.roblox.com/docs/reference/engine/classes/RunService). You can think of events
@@ -20,6 +23,8 @@ Phases that Roblox provides in a frame, all being ran in an explicit order.
 In Planck, we represent Phases as an Object which you can assign to
 Systems. You can create, insert, and add a Phase to a system like so,
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua title="scheduler.luau"
 local Planck = require("@packages/Planck")
 local Scheduler = Planck.Scheduler
@@ -35,7 +40,23 @@ local scheduler = Scheduler.new(world, state)
     :insert(myPhase)
     :addSystem(systemA, myPhase)
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import { Scheduler, Phase } from "@rbxts/planck";
 
+// ...
+
+const systemA = require("@shared/systems/systemA");
+
+const myPhase = new Phase("myPhase");
+
+const scheduler = new Scheduler(world, state)
+    .insert(myPhase)
+    .addSystem(systemA, myPhase);
+```
+</TabItem>
+</Tabs>
 :::note
 Remember SystemTables? Instead of setting the phase in `addSystem`, you can
 add it to your SystemTable and the system will be added to that Phase.
@@ -43,6 +64,8 @@ add it to your SystemTable and the system will be added to that Phase.
 
 We can also assign Phases to Events and Signals.
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua {8} title="scheduler.luau"
 -- ...
 
@@ -54,7 +77,21 @@ local scheduler = Scheduler.new(world, state)
     :insert(myPhase, RunService, "Heartbeat")
     :addSystem(systemA, myPhase)
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts {8}
+// ...
 
+import systemA from "shared/systems/systemA";
+
+const myPhase = new Phase("myPhase");
+
+const scheduler = new Scheduler(world, state)
+    .insert(myPhase, RunService, "Heartbeat")
+    .addSystem(systemA, myPhase);
+```
+</TabItem>
+</Tabs>
 ## Built-in Phases
 
 Planck provides built-in Phases like Startup Phases and also provides a Plugin
@@ -73,6 +110,8 @@ systems once, and before any other system is ran.
 - Startup
 - PostStartup
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local Planck = require("@packages/Planck")
 local Phase = Planck.Phase
@@ -81,6 +120,15 @@ local PreStartup = Phase.PreStartup
 local Startup = Phase.Startup
 local PostStartup = Phase.PostStartup
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import { Phase } from "@rbxts/planck";
+
+const { PreStartup, Startup, PostStartup } = Phase;
+```
+</TabItem>
+</Tabs>
 
 These Phases are useful for initialization work that you need to do once,
 and before you start your game loop.
@@ -115,6 +163,8 @@ You might be more familiar with the old names for some of these events.
 - `PreSimulation` is equivalent to `Stepped`
 :::
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local PlanckRunService = require("@packages/PlanckRunService")
 
@@ -126,7 +176,15 @@ local PreSimulation = Pipelines.PreSimulation
 local PostSimulation = Pipelines.PostSimulation
 local Heartbeat = Pipelines.Heartbeat
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import { Pipelines } from "@rbxts/planck-runservice";
 
+const { PreRender, PreAnimation, PreSimulation, PostSimulation, Heartbeat } = Pipelines;
+```
+</TabItem>
+</Tabs>
 ### Phases
 
 And it's own Phase, with the exception of `Heartbeat` which has many Phases.
@@ -139,6 +197,8 @@ And it's own Phase, with the exception of `Heartbeat` which has many Phases.
 | PostSimulation | PostSimulation |
 | Heartbeat      | Update         |
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local PlanckRunService = require("@packages/PlanckRunService")
 
@@ -150,7 +210,15 @@ local PreSimulation = Phases.PreSimulation
 local PostSimulation = Phases.PostSimulation
 local Update = Phases.Update
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import { Phases } from "@rbxts/planck-runservice";
 
+const { PreRender, PreAnimation, PreSimulation, PostSimulation, Update } = Phases;
+```
+</TabItem>
+</Tabs>
 ### More Update Phases
 
 `RunService.Heartbeat` isn't just a single Phase, instead its composed of
@@ -164,6 +232,8 @@ express the order of execution easily right out of the box.
 - PostUpdate
 - Last
 
+<Tabs groupId="language">
+<TabItem value="lua" label="Luau">
 ```lua
 local PlanckRunService = require("@packages/PlanckRunService")
 
@@ -175,7 +245,15 @@ local Update = Phases.Update
 local PostUpdate = Phases.PostUpdate
 local Last = Phases.Last
 ```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+```ts
+import { Phases } from "@rbxts/planck-runservice";
 
+const { First, PreUpdate, Update, PostUpdate, Last } = Phases;
+```
+</TabItem>
+</Tabs>
 ## What's Next?
 
 Now that we know about Phases, it's time to learn how to explicitly define
