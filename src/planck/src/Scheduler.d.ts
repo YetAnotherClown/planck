@@ -102,7 +102,7 @@ export interface BaseSystemTable<T extends unknown[]> {
   /** The execution phase for this system. Defaults to Main phase. */
   phase?: Phase;
   /** Conditions that must be met for the system to execute. */
-  runConditions?: Condition<T>[];
+  runConditions?: Condition<T>[] | LuaTuple<[Condition<T>, ...any[]]>;
 }
 
 /**
@@ -314,17 +314,29 @@ export class Scheduler<T extends unknown[]> {
    * Adds a Run Condition which the Scheduler will check before this System is
    * ran.
    */
-  addRunCondition(system: System<T>, fn: Condition<T>, ...args: any): this;
+  addRunCondition(
+    system: System<T>,
+    fn: Condition<T> | LuaTuple<[Condition<T>, ...any[]]>,
+    ...args: any
+  ): this;
   /**
    * Adds a Run Condition which the Scheduler will check before any Systems
    * within this Phase are ran.
    */
-  addRunCondition(phase: Phase, fn: Condition<T>, ...args: any): this;
+  addRunCondition(
+    phase: Phase,
+    fn: Condition<T> | LuaTuple<[Condition<T>, ...any[]]>,
+    ...args: any
+  ): this;
   /**
    * Adds a Run Condition which the Scheduler will check before any Systems
    * within any Phases apart of this Pipeline are ran.
    */
-  addRunCondition(pipeline: Pipeline, fn: Condition<T>, ...args: any): this;
+  addRunCondition(
+    pipeline: Pipeline,
+    fn: Condition<T> | LuaTuple<[Condition<T>, ...any[]]>,
+    ...args: any
+  ): this;
 
   /** Runs all Systems tagged with the Phase in order. */
   run(system: Phase): this;

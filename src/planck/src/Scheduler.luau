@@ -633,6 +633,9 @@ function Scheduler:addSystem(system, phase)
 
 	if type(system) == "table" and system.runConditions then
 		for _, condition in system.runConditions do
+			condition = if typeof(condition) == "table"
+				then condition[1]
+				else condition
 			self:addRunCondition(systemFn, condition)
 		end
 	end
@@ -881,6 +884,8 @@ end
 --- Adds a Run Condition which the Scheduler will check before
 --- any Systems within any Phases apart of this Pipeline are ran.
 function Scheduler:addRunCondition(dependent, fn)
+	fn = if typeof(fn) == "table" then fn[1] else fn
+
 	local system = getSystem(dependent)
 	if system then
 		dependent = system

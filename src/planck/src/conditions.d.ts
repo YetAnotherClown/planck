@@ -1,8 +1,8 @@
 import type { EventInstance, EventLike, ExtractEvents } from "./utils";
 
-export type Condition<T extends unknown[] = unknown[]> =
-  | ((...args: T) => boolean)
-  | LuaTuple<[Condition<T>, ...Array<any>]>;
+export type Condition<T extends unknown[] = unknown[]> = (
+  ...args: T
+) => boolean;
 
 /**
  * A Throttle condition which checks whether the amount of time given has passed
