@@ -11,7 +11,7 @@ import type { EventInstance, EventLike, ExtractEvents } from "./utils";
  * @example
  *
  * ```ts
- * function movementSystem(world: World, deltaTime: number): void {
+ * function movementSystem(world: World): void {
  *   // Update entity positions
  * }
  * ```
