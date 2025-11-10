@@ -31,7 +31,7 @@ local scheduler = Scheduler.new()
 ```ts
 import { Scheduler } from "@rbxts/planck";
 
-const scheduler = Scheduler.new();
+const scheduler = new Scheduler();
 ```
 </TabItem>
 </Tabs>
@@ -67,7 +67,7 @@ import { World } from "@rbxts/jecs";
 const world = new World();
 const state = {};
 
-const scheduler = Scheduler.new(world, state);
+const scheduler = new Scheduler(world, state);
 ```
 </TabItem>
 </Tabs>

@@ -148,7 +148,7 @@ import { Scheduler, onEvent } from "@rbxts/planck";
 
 const scheduler = new Scheduler(world)
     // Run out system only when there is a new Player
-    .addRunCondition(systemA, onEvent(Players.PlayerAdded)[0]);
+    .addRunCondition(systemA, onEvent(Players.PlayerAdded));
 ```
 </TabItem>
 </Tabs>
@@ -179,13 +179,21 @@ return {
 </TabItem>
 <TabItem value="ts" label="TypeScript">
 ```ts
-import { Scheduler, onEvent } from "@rbxts/planck";
+import { Players } from "@rbxts/services";
+import { onEvent } from "@rbxts/planck";
 
 const [hasNewEvent, collectEvents] = onEvent(Players.PlayerAdded);
 
-const scheduler = new Scheduler(world)
-    // Run the system only when the Player is alive
-    .addRunCondition(systemA, disconnect);
+function systemA() {
+    for ([i, player] of collectEvents()) {
+        // Do something
+    }
+}
+
+export = {
+    system: systemA,
+    runConditions: [hasNewEvent],
+}
 ```
 </TabItem>
 </Tabs>

@@ -97,11 +97,7 @@ local Heartbeat = Pipelines.Heartbeat
 ```ts
 import { Pipelines } from "@rbxts/planck-runservice";
 
-const PreRender = Pipelines.PreRender;
-const PreAnimation = Pipelines.PreAnimation;
-const PreSimulation = Pipelines.PreSimulation;
-const PostSimulation = Pipelines.PostSimulation;
-const Heartbeat = Pipelines.Heartbeat;
+const { PreRender, PreAnimation, PreSimulation, PostSimulation, Heartbeat } = Pipelines;
 ```
 </TabItem>
 </Tabs>
@@ -136,11 +132,7 @@ local Update = Phases.Update
 ```ts
 import { Phases } from "@rbxts/planck-runservice";
 
-const PreRender = Phases.PreRender;
-const PreAnimation = Phases.PreAnimation;
-const PreSimulation = Phases.PreSimulation;
-const PostSimulation = Phases.PostSimulation;
-const Update = Phases.Update;
+const { PreRender, PreAnimation, PreSimulation, PostSimulation, Update } = Phases;
 ```
 </TabItem>
 </Tabs>
@@ -175,11 +167,7 @@ local Last = Phases.Last
 ```ts
 import { Phases } from "@rbxts/planck-runservice";
 
-const First = Phases.First;
-const PreUpdate = Phases.PreUpdate;
-const Update = Phases.Update;
-const PostUpdate = Phases.PostUpdate;
-const Last = Phases.Last;
+const { First, PreUpdate, Update, PostUpdate, Last } = Phases;
 ```
 </TabItem>
 </Tabs>
