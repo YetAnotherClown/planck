@@ -36,6 +36,7 @@ export type Pipeline = {
 
 	insert: (self: Pipeline, phase: Phase) -> Pipeline,
 	insertAfter: (self: Pipeline, phase: Phase, after: Phase) -> Pipeline,
+	insertBefore: (self: Pipeline, phase: Phase, before: Phase) -> Pipeline,
 	new: (debugName: string?) -> Pipeline,
 }
 
