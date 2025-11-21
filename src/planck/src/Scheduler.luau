@@ -77,6 +77,10 @@ end
 --- Returns the time since the system was ran last.
 --- This must be used within a registered system.
 function Scheduler:getDeltaTime()
+	if self._currentSystem then
+		return self._currentSystem.deltaTime or 0
+	end
+
 	local systemFn = debug.info(2, "f")
 	if not systemFn or not self._systemInfo[systemFn] then
 		error(
@@ -130,6 +134,7 @@ function Scheduler:runSystem(system, justInitialized)
 	end
 
 	systemInfo.lastTime = now
+	self._currentSystem = systemInfo
 
 	if not self._thread then
 		self._thread = coroutine.create(function()
@@ -276,6 +281,7 @@ function Scheduler:runSystem(system, justInitialized)
 	end
 
 	self:_handleLogs(systemInfo)
+	self._currentSystem = nil
 
 	if hasSystem and justInitialized ~= true then
 		self:runSystem(system, true)
