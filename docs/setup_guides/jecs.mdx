@@ -177,7 +177,7 @@ const jabbyPlugin = new PlanckJabby();
 import { Plugin as RunServicePlugin } from "@rbxts/planck-runservice";
 const runServicePlugin = new RunServicePlugin();
 
-const scheduler = new Scheduler(world, world.widgets)
+const scheduler = new Scheduler(world)
     .addPlugin(jabbyPlugin)
     .addPlugin(runServicePlugin);
 ```
@@ -221,7 +221,7 @@ const jabbyPlugin = new PlanckJabby();
 import MatterHooks from "@rbxts/planck-matter-hooks";
 const hooksPlugin = new MatterHooks();
 
-const scheduler = new Scheduler(world, world.widgets)
+const scheduler = new Scheduler(world)
     .addPlugin(jabbyPlugin);
     .addPlugin(hooksPlugin);
 
