@@ -1,5 +1,5 @@
 local Jabby = require(script.Parent.Jabby)
- 
+
 type SystemInfo = {
 	name: string,
 	phase: any,
@@ -35,27 +35,40 @@ function Plugin:build(scheduler: any)
 	local name = `Planck{identifier}`
 
 	local jabbyScheduler = Jabby.scheduler.create()
+	local startupScheduler = Jabby.scheduler.create()
 
 	local systemToId = {}
 
-	for systemFn, systemInfo in scheduler._systemInfo do
-		local id = jabbyScheduler:register_system({
-			name = systemInfo.name,
-			phase = tostring(systemInfo.phase),
-		})
+	local STARTUP_PHASES = { "PreStartup", "Startup", "PostStartup" }
 
-		systemToId[systemFn] = id
+	local function addSystem(
+		systemFn: (...any) -> ...any,
+		systemInfo: { name: string, phase: any }
+	)
+		local phase = tostring(systemInfo.phase)
+		if table.find(STARTUP_PHASES, phase) then
+			local id = startupScheduler:register_system({
+				name = systemInfo.name,
+				phase = phase,
+			})
+			systemToId[systemFn] = id
+		else
+			local id = jabbyScheduler:register_system({
+				name = systemInfo.name,
+				phase = phase,
+			})
+			systemToId[systemFn] = id
+		end
+	end
+
+	for systemFn, systemInfo in scheduler._systemInfo do
+		addSystem(systemFn, systemInfo)
 	end
 
 	scheduler:_addHook(
 		scheduler.Hooks.SystemAdd,
 		function(info: SystemsAddRemove)
-			local id = jabbyScheduler:register_system({
-				name = info.system.name,
-				phase = tostring(info.system.phase),
-			})
-
-			systemToId[info.system.system] = id
+			addSystem(info.system.system, info.system)
 		end
 	)
 
@@ -85,29 +98,30 @@ function Plugin:build(scheduler: any)
 		end
 	)
 
-	local STARTUP_PHASES = { "PreStartup", "Startup", "PostStartup" }
-	local startupSystems = {}
-
 	scheduler:_addHook(scheduler.Hooks.SystemCall, function(args: HookArgs)
 		local id = systemToId[args.system.system]
 
 		return function()
-			for _id, _ in startupSystems do
-				jabbyScheduler:set_system_data(_id, {
-					paused = true,
-				})
+			local phase = tostring(args.system.phase)
+			if table.find(STARTUP_PHASES, phase) then
+				startupScheduler:run(id, function()
+					args.nextFn()
+				end)
+			else
+				jabbyScheduler:run(id, function()
+					args.nextFn()
+				end)
 			end
-
-			jabbyScheduler:run(id, function()
-				args.nextFn()
-
-				local phase = tostring(args.system.phase)
-				if table.find(STARTUP_PHASES, phase) then
-					startupSystems[id] = true
-				end
-			end)
 		end
 	end)
+
+	Jabby.register({
+		applet = Jabby.applets.scheduler,
+		name = name .. " (Startup)",
+		configuration = {
+			scheduler = startupScheduler,
+		},
+	})
 
 	Jabby.register({
 		applet = Jabby.applets.scheduler,
