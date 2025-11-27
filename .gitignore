@@ -15,3 +15,11 @@ node_modules/
 out/
 package_tarballs/
 builds/
+.devenv
+
+# Nix / direnv artifacts
+.envrc
+flake.nix
+flake.lock
+.direnv/
+.direnv/**
