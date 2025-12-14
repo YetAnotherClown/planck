@@ -528,6 +528,7 @@ On the server, we'll instead add the `server` systems.
 <Tabs groupId="language">
 <TabItem value="lua" label="Luau">
 ```lua {18} title="ServerScriptService/server/server.server.luau"
+local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local startup = require("@shared/startup")
@@ -545,13 +546,14 @@ local function addSystems(folder)
 end
 
 addSystems(ReplicatedStorage.shared.systems)
-addSystems(ReplicatedStorage.server.systems)
+addSystems(ServerScriptService.server.systems)
 
 startup(systems)
 ```
 </TabItem>
 <TabItem value="ts" label="TypeScript">
 ```ts {18} title="ServerScriptService/server/server.server.ts"
+const ServerScriptService = game.GetService("ServerScriptService")
 const ReplicatedStorage = game.GetService("ReplicatedStorage");
 
 import startup from "shared/startup";
@@ -569,7 +571,7 @@ function addSystems(folder: Instance) {
 }
 
 addSystems(ReplicatedStorage.FindFirstChild("shared")!.FindFirstChild("systems")!);
-addSystems(ReplicatedStorage.FindFirstChild("server")!.FindFirstChild("systems")!);
+addSystems(ServerScriptService.FindFirstChild("server")!.FindFirstChild("systems")!);
 
 startup(systems);
 ```
