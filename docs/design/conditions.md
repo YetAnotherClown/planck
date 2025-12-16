@@ -258,7 +258,7 @@ local onEvent = Planck.onEvent
 local isNot = Planck.isNot
 
 local scheduler = Scheduler.new(world)
-    -- Run our system only when there is a new Player
+    -- Run our system only on frames where there are no new Players
     :addRunCondition(systemA, isNot(onEvent(Players.PlayerAdded)))
 ```
 </TabItem>
