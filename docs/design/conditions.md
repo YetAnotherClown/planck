@@ -267,7 +267,7 @@ local scheduler = Scheduler.new(world)
 import { Scheduler, onEvent, isNot } from "@rbxts/planck";
 
 const scheduler = new Scheduler(world)
-    // Run our system only when there is a new Player
+    // Run our system only on frames where there are no new Players
     .addRunCondition(systemA, isNot(onEvent(Players.PlayerAdded)[0]));
 ```
 </TabItem>
