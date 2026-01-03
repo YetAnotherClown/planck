@@ -125,6 +125,12 @@ function Scheduler:runSystem(system, justInitialized)
 	local systemInfo = self._systemInfo[system]
 	local now = os.clock()
 
+	if not systemInfo then
+		error(
+			"Attempted to run a non-registered system, make sure it is added to the Scheduler"
+		)
+	end
+
 	if justInitialized ~= true then
 		if self:_canRun(system) == false then
 			return
