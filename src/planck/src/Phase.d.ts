@@ -13,6 +13,8 @@ export class Phase {
   /** Runs after the `Startup` phase. */
   static PostStartup: Phase;
 
+  private _type: "phase";
+
   /**
    * Creates a new Phase, with an optional name to use for debugging.
    * When no name is provided, the script and line number will be used.
