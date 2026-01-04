@@ -1,6 +1,6 @@
 {
 	"name": "@rbxts/planck",
-	"version": "0.3.0-alpha.1",
+	"version": "0.3.0-alpha.2",
 	"description": "An Agnostic Scheduler for ECS",
 	"main": "src",
 	"repository": {
