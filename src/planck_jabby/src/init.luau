@@ -1,4 +1,20 @@
-local Jabby = require(script.Parent.Jabby)
+local Jabby = (function()
+	-- Try to use the TS runtime import if present on _G for npm-packaged code.
+	local ok, TS = pcall(function() return _G[script] end)
+	if ok and TS ~= nil then
+		return (TS.import(script, TS.getModule(script, "@rbxts", "jabby").out) :: any)
+	end
+
+	-- Fallback to local module require for tests / local usage
+	local mod = (script.Parent :: Instance):FindFirstChild("Jabby")
+	if mod then
+		return (require(mod :: any) :: any)
+	end
+
+	-- No module found; return nil. In practice the TS import path will be used when
+	-- publishing to npm, so this branch is only for edge cases/tests.
+	return nil
+end)()
 
 type SystemInfo = {
 	name: string,
