@@ -62,6 +62,21 @@ local function systemReplace(scheduler, oldSystemInfo, newSystemInfo)
 	end
 end
 
+local function systemTriedRun(scheduler, systemInfo)
+	local hooks = scheduler._hooks[scheduler.Hooks.SystemTriedRun]
+	local info = {
+		scheduler = scheduler,
+		system = systemInfo,
+	}
+
+	for _, hook in hooks do
+		local success, err = pcall(hook, info)
+		if not success then
+			warn("Unexpected error in hook:", err)
+		end
+	end
+end
+
 local function systemCall(scheduler, hookName, systemInfo, nextFn)
 	local hooks = scheduler._hooks[scheduler.Hooks[hookName]]
 
@@ -140,6 +155,7 @@ local Hooks = {
 	SystemReplace = "SystemReplace",
 	SystemCleanup = "SystemCleanup",
 	SystemError = "SystemError",
+	SystemTriedRun = "SystemTriedRun",
 
 	OuterSystemCall = "OuterSystemCall",
 	InnerSystemCall = "InnerSystemCall",
@@ -156,6 +172,7 @@ return {
 	systemRemove = systemRemove,
 	systemReplace = systemReplace,
 	systemCleanup = systemCleanup,
+	systemTriedRun = systemTriedRun,
 	systemCall = systemCall,
 	systemError = systemError,
 	phaseAdd = phaseAdd,

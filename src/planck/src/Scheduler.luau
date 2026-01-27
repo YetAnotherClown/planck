@@ -133,6 +133,7 @@ function Scheduler:runSystem(system, justInitialized)
 
 	if justInitialized ~= true then
 		if self:_canRun(system) == false then
+			hooks.systemTriedRun(self, systemInfo)
 			return
 		end
 

@@ -51,11 +51,17 @@ function Plugin:build(scheduler: any)
 				name = systemInfo.name,
 				phase = phase,
 			})
+			startupScheduler:set_system_data(id, {
+				paused = true
+			})
 			systemToId[systemFn] = id
 		else
 			local id = jabbyScheduler:register_system({
 				name = systemInfo.name,
 				phase = phase,
+			})
+			jabbyScheduler:set_system_data(id, {
+				paused = true
 			})
 			systemToId[systemFn] = id
 		end
@@ -98,16 +104,40 @@ function Plugin:build(scheduler: any)
 		end
 	)
 
+	scheduler:_addHook(
+		scheduler.Hooks.SystemTriedRun,
+		function(info: SystemsAddRemove)
+			local id = systemToId[info.system.system]
+			local phase = tostring(info.system.phase)
+
+			if table.find(STARTUP_PHASES, phase) then
+				startupScheduler:set_system_data(id, {
+					paused = true
+				})
+			else
+				jabbyScheduler:set_system_data(id, {
+					paused = true
+				})
+			end
+		end
+	)
+
 	scheduler:_addHook(scheduler.Hooks.SystemCall, function(args: HookArgs)
 		local id = systemToId[args.system.system]
 
 		return function()
 			local phase = tostring(args.system.phase)
 			if table.find(STARTUP_PHASES, phase) then
+				startupScheduler:set_system_data(id, {
+					paused = false
+				})
 				startupScheduler:run(id, function()
 					args.nextFn()
 				end)
 			else
+			jabbyScheduler:set_system_data(id, {
+				paused = false
+			})
 				jabbyScheduler:run(id, function()
 					args.nextFn()
 				end)
