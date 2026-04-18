@@ -1,18 +1,63 @@
-type Phase = any
-type Pipeline = any
+local Pipeline = require(script.Parent.Pipeline)
+local Phase = require(script.Parent.Phase)
 
-type SystemFn<U...> = (U...) -> ()
-type SystemInitializerFn<U...> = (U...) -> SystemFn<U...>
+type Pipeline = Pipeline.Pipeline
+type Phase = Phase.Phase
 
-type SystemTable<U...> = {
-	system: SystemFn<U...> | SystemInitializerFn<U...>,
+--- @type SystemFn ((U...) -> ())
+--- @within Scheduler
+--- Standard system function that runs every time it's scheduled
+export type SystemFn<U...> = (U...) -> ()
+type AnyFunction = (...any) -> ...any
+
+--- @type CleanupFn (() -> ())
+--- @within Scheduler
+--- Cleanup function called when system is removed
+
+export type InitializerResult<U...> =
+	{
+		system: SystemFn<U...>,
+	}
+	| {
+		cleanup: SystemFn<U...>,
+	}
+	| {
+		system: SystemFn<U...>,
+		cleanup: SystemFn<U...>,
+	}
+
+--- @type InitializerSystemFn ((U...) -> (SystemFn<U...> | (SystemFn<U...>, CleanupFn)))
+--- @within Scheduler
+--- Initializer system that returns the runtime function, optionally with cleanup
+export type InitializerSystemFn<U...> = (
+	U...
+) -> SystemFn<U...> | SystemFn<U...>
+
+export type InternalSystem<U...> = SystemFn<U...> | InitializerSystemFn<U...>
+
+--- @interface SystemTable
+--- @within Scheduler
+--- .system SystemFn<U...> | InitializerSystemFn<U...>
+--- .phase Phase?
+--- .name string?
+--- .runConditions {RunCondition}?
+--- .[any] any
+export type SystemTable<U...> = {
+	system: InternalSystem<U...>,
 	phase: Phase?,
+	name: string?,
+	runConditions: { (U...) -> boolean }?,
 	[any]: any,
 }
 
-type System<U...> = SystemFn<U...> | SystemInitializerFn<U...> | SystemTable<U...>
+--- @type System SystemFn<U...> | SystemTable<U...> | InitializerSystemFn<U...>
+--- @within Scheduler
+export type System<U...> =
+	SystemFn<U...>
+	| InitializerSystemFn<U...>
+	| SystemTable<U...>
 
-local function getSystem<U...>(system: any): SystemTable<U...>?
+local function getSystem<U...>(system: System<U...>): InternalSystem<U...>?
 	if type(system) == "function" then
 		return system
 	elseif type(system) == "table" and system.system then
@@ -22,12 +67,14 @@ local function getSystem<U...>(system: any): SystemTable<U...>?
 	end
 end
 
-local function getSystemName(system: any): string
+local function getSystemName<U...>(system: System<U...>): string
 	if type(system) == "table" and system.name then
 		return system.name
 	end
 
-	local fn = type(system) == "table" and system.system or system
+	local fn: AnyFunction = if type(system) == "table"
+		then system.system
+		else system
 
 	local name = debug.info(fn, "n")
 	if not name or string.len(name) == 0 then
@@ -38,17 +85,25 @@ local function getSystemName(system: any): string
 	return name
 end
 
-local function isPhase(phase: any): Phase?
-	if type(phase) == "table" and phase._type == "phase" then
-		return phase
+local function isSystem<U...>(system: unknown): InternalSystem<U...>?
+	if type(system) == "function" then
+		return system
 	else
 		return nil
 	end
 end
 
-local function isPipeline(pipeline: any): Pipeline?
+local function isPhase(phase: unknown): Phase?
+	if type(phase) == "table" and phase._type == "phase" then
+		return phase :: Phase
+	else
+		return nil
+	end
+end
+
+local function isPipeline(pipeline: unknown): Pipeline?
 	if type(pipeline) == "table" and pipeline._type == "pipeline" then
-		return pipeline
+		return pipeline :: Pipeline
 	else
 		return nil
 	end
@@ -86,11 +141,10 @@ local function disconnectEvent(connection: ConnectionLike)
 		return
 	elseif type(connection) == "table" then
 		for _, method in EVENT_DISCONNECT_METHODS do
-			if
-				connection[method]
-				and type(connection[method]) == "function"
-			then
-				connection[method](connection)
+			local connect: unknown = (connection :: any)[method]
+
+			if connect and connect == "function" then
+				(connect :: any)(connection)
 				return
 			end
 		end
@@ -119,31 +173,31 @@ export type SignalLike<U...> =
 		[any]: any,
 	}
 
-type GetConnectFn<U...> =
+type GetConnectFn =
 	-- RBXScriptSignal & nil
-	((RBXScriptSignal<U...>) -> ConnectFn<RBXScriptConnection, U...>)
+	(<U...>(RBXScriptSignal<U...>) -> ConnectFn<RBXScriptConnection, U...>)
 	-- Instance & RBXScriptSignal
 	-- Instance & string
-	& ((
+	& (<U...>(
 		Instance,
 		RBXScriptSignal<U...> | string
 	) -> ConnectFn<RBXScriptConnection, U...>)
 	-- SignalLike & nil
-	& ((SignalLike<U...>) -> ConnectFn<any, U...>)
+	& (<U...>(SignalLike<U...>) -> ConnectFn<any, U...>)
 	-- table & string
-	& ((GenericTable, string) -> ConnectFn<any, U...>)
+	& (<U...>(GenericTable, string) -> ConnectFn<any, U...>)
 	-- table & connectable method
-	& (<T>(
+	& (<T, U...>(
 		GenericTable,
 		(GenericTable, Callback<U...>, ...any) -> T
 	) -> ConnectFn<T, U...>)
 	-- connectable function
-	& (<T>((Callback<U...>, ...any) -> T) -> ConnectFn<T, U...>)
+	& (<T, U...>((Callback<U...>, ...any) -> T) -> ConnectFn<T, U...>)
 
 -- This function is inspired by useEvent in Matter, a library by evaera (https://github.com/evaera)
 -- License: Copyright (c) 2021 Eryn L. K., MIT License
 -- Source: https://github.com/matter-ecs/matter/blob/main/lib/hooks/useEvent.luau
-local function getConnectFunction(instance, event)
+local getConnectFn: GetConnectFn = function(instance: any, event: any): any
 	local eventInstance = instance
 
 	if typeof(event) == "RBXScriptSignal" or type(event) == "table" then
@@ -163,7 +217,7 @@ local function getConnectFunction(instance, event)
 	if type(eventInstance) == "table" then
 		if type(event) == "function" then
 			return function(callback)
-				return event(eventInstance, callback)
+				return (event :: any)(eventInstance, callback)
 			end
 		end
 
@@ -182,16 +236,17 @@ local function getConnectFunction(instance, event)
 end
 
 local function isValidEvent(instance, event)
-	return getConnectFunction(instance, event) ~= nil
+	return getConnectFn(instance, event) ~= nil
 end
 
 return {
 	getSystem = getSystem,
 	getSystemName = getSystemName,
+	isSystem = isSystem,
 	isPhase = isPhase,
 	isPipeline = isPipeline,
 	getEventIdentifier = getEventIdentifier,
 	isValidEvent = isValidEvent,
-	getConnectFunction = getConnectFunction :: GetConnectFn<...any>,
+	getConnectFn = getConnectFn,
 	disconnectEvent = disconnectEvent,
 }

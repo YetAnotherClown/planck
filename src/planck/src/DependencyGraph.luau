@@ -1,19 +1,7 @@
 local AdjacencyMatrix = {}
 AdjacencyMatrix.__index = AdjacencyMatrix
 
-export type AdjacencyMatrix = {
-	matrix: { { number } },
-	length: number,
-	width: number,
-
-	extend: (self: AdjacencyMatrix) -> (),
-	setEdge: (self: AdjacencyMatrix, i: number, j: number, v: number) -> (),
-	toAdjacencyList: (self: AdjacencyMatrix) -> { { number } },
-	topologicalSort: (self: AdjacencyMatrix) -> { number }?,
-	new: () -> AdjacencyMatrix,
-}
-
-function AdjacencyMatrix:__tostring()
+function AdjacencyMatrix.__tostring(self: AdjacencyMatrix)
 	local s = "\n"
 
 	for i = 1, self.length do
@@ -38,9 +26,9 @@ function AdjacencyMatrix:__tostring()
 	return s
 end
 
-function AdjacencyMatrix:extend()
-	self.length = (self.length :: number) + 1
-	self.width = (self.length :: number) + 1
+function AdjacencyMatrix.extend(self: AdjacencyMatrix)
+	self.length = self.length + 1
+	self.width = self.length + 1
 
 	self.matrix[self.length] = {}
 	for j = 1, self.width do
@@ -52,11 +40,16 @@ function AdjacencyMatrix:extend()
 	end
 end
 
-function AdjacencyMatrix:setEdge(i, j, val)
+function AdjacencyMatrix.setEdge(
+	self: AdjacencyMatrix,
+	i: number,
+	j: number,
+	val: number
+)
 	self.matrix[i][j] = val
 end
 
-function AdjacencyMatrix:toAdjacencyList()
+function AdjacencyMatrix.toAdjacencyList(self: AdjacencyMatrix): { { number } }
 	local list = {}
 
 	for i = 1, self.length do
@@ -71,7 +64,7 @@ function AdjacencyMatrix:toAdjacencyList()
 	return list
 end
 
-function AdjacencyMatrix:topologicalSort(): { number }?
+function AdjacencyMatrix.topologicalSort(self: AdjacencyMatrix): { number }?
 	local adjacencyList = self:toAdjacencyList()
 
 	local result = {}
@@ -114,34 +107,19 @@ function AdjacencyMatrix.new(): AdjacencyMatrix
 		matrix = {},
 		length = 0,
 		width = 0,
-	}, AdjacencyMatrix) :: any
+	}, AdjacencyMatrix)
 end
 
-export type DependencyGraph<T> = {
-	nodes: { T },
-	matrix: AdjacencyMatrix,
+export type AdjacencyMatrix = setmetatable<{
+	matrix: { { number } },
 	length: number,
 	width: number,
-
-	getOrderedList: (self: DependencyGraph<T>) -> { T }?,
-	insert: (self: DependencyGraph<T>, node: T) -> DependencyGraph<T>,
-	insertAfter: (
-		self: DependencyGraph<T>,
-		node: T,
-		afterNode: T
-	) -> DependencyGraph<T>,
-	insertBefore: (
-		self: DependencyGraph<T>,
-		node: T,
-		beforeNode: T
-	) -> DependencyGraph<T>,
-	new: () -> DependencyGraph<T>,
-}
+}, typeof(AdjacencyMatrix)>
 
 local DependencyGraph = {}
 DependencyGraph.__index = DependencyGraph
 
-function DependencyGraph:getOrderedList(): { any }?
+function DependencyGraph.getOrderedList<T>(self: DependencyGraph<T>): { T }?
 	local orderedList = {}
 
 	local topologicalSort = self.matrix:topologicalSort()
@@ -156,10 +134,13 @@ function DependencyGraph:getOrderedList(): { any }?
 	return orderedList
 end
 
-function DependencyGraph:insertBefore(node, beforeNode)
-	if not table.find(self.nodes, beforeNode) then
-		error("Node not found in DependencyGraph:insertBefore(_, unknown)")
-	end
+function DependencyGraph.insertBefore<T>(
+	self: DependencyGraph<T>,
+	node: T,
+	beforeNode: T
+)
+	local i = table.find(self.nodes, beforeNode)
+	assert(i, "Node not found in DependencyGraph:insertBefore(_, unknown)")
 
 	local j = table.find(self.nodes, node)
 	if not j then
@@ -167,7 +148,8 @@ function DependencyGraph:insertBefore(node, beforeNode)
 		j = #self.nodes
 	end
 
-	local i = table.find(self.nodes, beforeNode)
+	-- selene: allow(incorrect_standard_library_use)
+	assert(j)
 
 	self.matrix:extend()
 	self.matrix:setEdge(j, i, 1)
@@ -175,10 +157,13 @@ function DependencyGraph:insertBefore(node, beforeNode)
 	return self
 end
 
-function DependencyGraph:insertAfter(node, afterNode)
-	if not table.find(self.nodes, afterNode) then
-		error("Node not found in DependencyGraph:insertAfter(_, unknown)")
-	end
+function DependencyGraph.insertAfter<T>(
+	self: DependencyGraph<T>,
+	node: T,
+	afterNode: T
+)
+	local i = table.find(self.nodes, afterNode)
+	assert(i, "Node not found in DependencyGraph:insertAfter(_, unknown)")
 
 	local j = table.find(self.nodes, node)
 	if not j then
@@ -186,7 +171,8 @@ function DependencyGraph:insertAfter(node, afterNode)
 		j = #self.nodes
 	end
 
-	local i = table.find(self.nodes, afterNode)
+	-- selene: allow(incorrect_standard_library_use)
+	assert(j)
 
 	self.matrix:extend()
 	self.matrix:setEdge(i, j, 1)
@@ -194,7 +180,7 @@ function DependencyGraph:insertAfter(node, afterNode)
 	return self
 end
 
-function DependencyGraph:insert(node)
+function DependencyGraph.insert<T>(self: DependencyGraph<T>, node: T)
 	local i = #self.nodes
 	table.insert(self.nodes, node)
 	local j = #self.nodes
@@ -214,7 +200,14 @@ function DependencyGraph.new<T>(): DependencyGraph<T>
 		matrix = AdjacencyMatrix.new(),
 		length = 0,
 		width = 0,
-	}, DependencyGraph) :: any
+	}, DependencyGraph)
 end
+
+export type DependencyGraph<T> = setmetatable<{
+	nodes: { T },
+	matrix: AdjacencyMatrix,
+	length: number,
+	width: number,
+}, typeof(DependencyGraph)>
 
 return DependencyGraph

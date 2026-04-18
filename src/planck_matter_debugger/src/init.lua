@@ -48,16 +48,19 @@ type ConnectionObject = {
 	destroy: (() -> ())?,
 } | () -> ()
 
-type CustomEvent = {
-	Connect: (...any) -> ConnectionObject,
-	[any]: any,
-} | {
-	on: (...any) -> ConnectionObject,
-	[any]: any,
-} | {
-	connect: (...any) -> ConnectionObject,
-	[any]: any,
-}
+type CustomEvent =
+	{
+		Connect: (...any) -> ConnectionObject,
+		[any]: any,
+	}
+	| {
+		on: (...any) -> ConnectionObject,
+		[any]: any,
+	}
+	| {
+		connect: (...any) -> ConnectionObject,
+		[any]: any,
+	}
 
 local Plugin = {}
 Plugin.__index = Plugin
