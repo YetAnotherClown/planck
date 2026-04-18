@@ -9,6 +9,8 @@ export class Pipeline {
   /** A Pipeline containing the `PreStartup`, `Startup`, and `PostStartup` phases. */
   static Startup: Pipeline;
 
+  private _type: "pipeline";
+
   /**
    * Creates a new Pipeline, with an optional name to use for debugging.
    * When no name is provided, the script and line number will be used.

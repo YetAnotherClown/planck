@@ -3,7 +3,7 @@ name = "yetanotherclown/planck-jabby"
 description = "A Plugin for Planck, adding support for the Jabby debugger."
 license = "MIT"
 authors = ["YetAnotherClown"]
-version = "0.2.0"
+version = "0.3.0-alpha.1"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
 homepage = "https://yetanotherclown.github.io/planck"
@@ -16,4 +16,4 @@ Jest = "jsdotlua/jest@3.6.1-rc.2"
 JestGlobals = "jsdotlua/jest-globals@3.6.1-rc.2"
 
 [dependencies]
-Jabby = "alicesaidhi/jabby@0.3.0"
+Jabby = "alicesaidhi/jabby@0.4.0"

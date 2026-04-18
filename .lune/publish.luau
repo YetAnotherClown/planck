@@ -42,7 +42,8 @@ end
 local function publishPackage(
 	package: Package,
 	version: string,
-	dryRun: boolean
+	dryRun: boolean,
+	otp: string
 )
 	stdio.write(
 		`{stdio.style("dim")}`
@@ -90,12 +91,12 @@ local function publishPackage(
 		end
 
 		stdio.write(result.stdout)
-	end
+		end
 
 	do
 		local result
 		if not dryRun then
-			result = exec(`npm publish ./{package.path}/`)
+			result = exec(`npm publish ./{package.path}/ --otp={otp}`)
 		else
 			result = exec(
 				`npm pack`
@@ -122,11 +123,17 @@ local function publishPackage(
 end
 
 local dryRun = true
+local otp
 
 local args = {}
 for _, arg in process.args do
 	if arg == "--publish" then
 		dryRun = false
+		continue
+	end
+
+	if string.sub(arg, 1, 6) == "--otp=" then
+		otp = string.sub(arg, 7)
 		continue
 	end
 
@@ -239,6 +246,10 @@ if dryRun then
 	fs.writeDir("package_tarballs/wally")
 	fs.writeDir("package_tarballs/npm")
 elseif not dryRun then
+	if not otp then
+		error("otp required for npm publish, add `--opt=<code>`")
+	end
+
 	local prompt = `Are you sure you want to publish the following packages:`
 	prompt ..= `{stdio.style("reset")}{stdio.style("dim")}`
 
@@ -257,7 +268,7 @@ elseif not dryRun then
 end
 
 for i, name in orderedList do
-	publishPackage(nameToPackage[name], version, dryRun)
+	publishPackage(nameToPackage[name], version, dryRun, otp)
 	if i ~= #packages then
 		task.wait(2)
 	end

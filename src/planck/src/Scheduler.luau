@@ -100,6 +100,7 @@ type Hooks = {
 	SystemReplace: Hook<SystemReplaceContext>,
 	SystemCleanup: Hook<SystemErrorContext>,
 	SystemError: Hook<SystemErrorContext>,
+	SystemTriedRun: Hook<SystemHookContext>,
 
 	OuterSystemCall: Hook<SystemCallContext, SystemCallHookFn>,
 	InnerSystemCall: Hook<SystemCallContext, SystemCallHookFn>,
@@ -116,6 +117,7 @@ Scheduler.Hooks = (
 		SystemReplace = "SystemReplace",
 		SystemCleanup = "SystemCleanup",
 		SystemError = "SystemError",
+		SystemTriedRun = "SystemTriedRun",
 
 		OuterSystemCall = "OuterSystemCall",
 		InnerSystemCall = "InnerSystemCall",
@@ -236,6 +238,15 @@ function Scheduler._systemError<E, U...>(self: Scheduler<U...>, systemInfo, err:
 	callHooks(self._hooks["SystemError"], context)
 end
 
+function Scheduler._systemTriedRun<T, U...>(self: Scheduler<U...>, systemInfo)
+	local context: SystemHookContext = {
+		scheduler = self,
+		system = systemInfo,
+	}
+
+	callHooks(self._hooks["SystemTriedRun"], context)
+end
+
 type SystemHookId = "OuterSystemCall" | "InnerSystemCall" | "SystemCall"
 
 type SystemCallHookFn = (SystemCallContext) -> SystemCallHookFn
@@ -299,6 +310,10 @@ end
 --- Returns the time since the system was ran last.
 --- This must be used within a registered system.
 function Scheduler.getDeltaTime<U...>(self: Scheduler<U...>)
+	if self._currentSystem then
+		return self._currentSystem.deltaTime or 0
+	end
+
 	local systemFn = debug.info(2, "f")
 	if not systemFn or not self._systemInfo[systemFn] then
 		error(
@@ -354,8 +369,15 @@ function Scheduler.runSystem<U...>(
 	local systemInfo = self._systemInfo[system]
 	local now = os.clock()
 
+	if not systemInfo then
+		error(
+			"Attempted to run a non-registered system, make sure it is added to the Scheduler"
+		)
+	end
+
 	if justInitialized ~= true then
 		if self:_canRun(system) == false then
+			self:_systemTriedRun(systemInfo)
 			return
 		end
 
@@ -363,6 +385,7 @@ function Scheduler.runSystem<U...>(
 	end
 
 	systemInfo.lastTime = now
+	self._currentSystem = systemInfo
 
 	if not self._thread then
 		self._thread = coroutine.create(function()
@@ -515,6 +538,7 @@ function Scheduler.runSystem<U...>(
 	end
 
 	self:_handleLogs(systemInfo)
+	self._currentSystem = nil
 
 	if hasSystem and justInitialized ~= true then
 		self:runSystem(system, true)
@@ -1385,6 +1409,7 @@ function Scheduler.new<U...>(...: U...): Scheduler<U...>
 		_runIfConditions = {},
 		_systemInfo = {},
 		_thread = nil :: any,
+		_currentSystem = nil :: any,
 		_yielded = false,
 		_vargs = { ... },
 	}, Scheduler)
@@ -1417,6 +1442,7 @@ export type Scheduler<U...> = setmetatable<
 		_runIfConditions: Map<Dependent<...any>, Vec<Condition<...any>>>,
 		-- LUAU FIXME: Should be SystemInfo<U...>
 		_systemInfo: Map<unknown, SystemInfo<...any>>,
+		_currentSystem: SystemInfo<...any>,
 		_thread: thread?,
 		_yielded: boolean,
 		_vargs: { any },
