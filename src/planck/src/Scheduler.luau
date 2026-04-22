@@ -583,7 +583,7 @@ function Scheduler._canRun<U...>(self: Scheduler<U...>, dependent: Dependent<U..
 
 	if runConditions then
 		for _, runIf in runConditions do
-			if runIf(table.unpack(self._vargs)) == false then
+			if runIf and not runIf(table.unpack(self._vargs)) then
 				return false
 			end
 		end
@@ -1228,7 +1228,7 @@ end
 --- @method addRunCondition
 --- @within Scheduler
 --- @param system System
---- @param fn (U...) -> boolean
+--- @param fn (U...) -> any
 ---
 --- Adds a Run Condition which the Scheduler will check before
 --- this System is ran.
@@ -1236,7 +1236,7 @@ end
 --- @method addRunCondition
 --- @within Scheduler
 --- @param phase Phase
---- @param fn (U...) -> boolean
+--- @param fn (U...) -> any
 ---
 --- Adds a Run Condition which the Scheduler will check before
 --- any Systems within this Phase are ran.
@@ -1244,7 +1244,7 @@ end
 --- @method addRunCondition
 --- @within Scheduler
 --- @param pipeline Pipeline
---- @param fn (U...) -> boolean
+--- @param fn (U...) -> any
 ---
 --- Adds a Run Condition which the Scheduler will check before
 --- any Systems within any Phases apart of this Pipeline are ran.
