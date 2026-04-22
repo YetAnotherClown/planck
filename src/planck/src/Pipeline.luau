@@ -78,7 +78,7 @@ end
 function Pipeline.new(name: string?): Pipeline
 	name = name or debug.info(2, "sl")
 
-	local dependencyGraph: DependencyGraph<Phase> = DependencyGraph.new() :: any
+	local dependencyGraph: DependencyGraph<Phase> = DependencyGraph.new()
 
 	return setmetatable({
 		_name = name,

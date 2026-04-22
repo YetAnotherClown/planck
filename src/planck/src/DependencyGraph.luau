@@ -194,7 +194,7 @@ function DependencyGraph.insert<T>(self: DependencyGraph<T>, node: T)
 	return self
 end
 
-function DependencyGraph.new<T>(): DependencyGraph<T>
+function DependencyGraph.new(): DependencyGraph<any>
 	return setmetatable({
 		nodes = {},
 		matrix = AdjacencyMatrix.new(),
