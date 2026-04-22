@@ -29,7 +29,7 @@ export type SystemTable<U...> = {
 	system: SystemFn<U...> | InitializerSystemFn<U...>,
 	phase: Phase?,
 	name: string?,
-	runConditions: { (U...) -> boolean }?,
+	runConditions: { Condition<U...> }?,
 	[any]: any,
 }
 
@@ -66,6 +66,8 @@ type Plugin<U...> =
 		[any]: any,
 	}
 
+export type Condition<U...> = (U...) -> any
+
 export type Scheduler<U...> = {
 	addPlugin: (self: Scheduler<U...>, plugin: Plugin<U...>) -> Scheduler<U...>,
 
@@ -101,17 +103,17 @@ export type Scheduler<U...> = {
 	addRunCondition: ((
 		self: Scheduler<U...>,
 		system: System<U...>,
-		fn: (U...) -> boolean,
+		fn: Condition<U...>,
 		...any
 	) -> Scheduler<U...>) & ((
 		self: Scheduler<U...>,
 		phase: Phase,
-		fn: (U...) -> boolean,
+		fn: Condition<U...>,
 		...any
 	) -> Scheduler<U...>) & ((
 		self: Scheduler<U...>,
 		pipeline: Pipeline,
-		fn: (U...) -> boolean,
+		fn: Condition<U...>,
 		...any
 	) -> Scheduler<U...>),
 

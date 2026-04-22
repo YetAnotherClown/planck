@@ -1,8 +1,11 @@
 import type { EventInstance, EventLike, ExtractEvents } from "./utils";
 
+/**
+ * If a Run Condition returns a falsy value (`nil`, `void`, `false`), the System/Phase/Pipeline will be prevented from running.
+ */
 export type Condition<T extends unknown[] = unknown[]> = (
   ...args: T
-) => boolean;
+) => unknown | void;
 
 /**
  * A Throttle condition which checks whether the amount of time given has passed
