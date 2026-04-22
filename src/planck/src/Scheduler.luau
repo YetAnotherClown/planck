@@ -249,7 +249,8 @@ end
 
 type SystemHookId = "OuterSystemCall" | "InnerSystemCall" | "SystemCall"
 
-type SystemCallHookFn = (SystemCallContext) -> SystemCallHookFn
+type SystemCallHookFn = () -> ()
+type SystemCallCallback = (SystemCallContext) -> SystemCallHookFn
 type SystemCallContext = PartialHookContext & {
 	system: SystemInfo<...any>,
 	nextFn: SystemCallHookFn,
@@ -261,7 +262,7 @@ function Scheduler._systemCall<T, U...>(
 	systemInfo: SystemInfo<U...>,
 	nextFn: SystemCallHookFn
 )
-	for _, hook in self._hooks[hookName] :: Vec<SystemCallHookFn> do
+	for _, hook in self._hooks[hookName] :: Vec<SystemCallCallback> do
 		local context: SystemCallContext = {
 			scheduler = self,
 			system = systemInfo :: any,
@@ -278,7 +279,7 @@ function Scheduler._systemCall<T, U...>(
 		end
 	end
 
-	nextFn(nil :: any) -- Final callback does not take any context
+	nextFn()
 end
 
 type PhaseContext = PartialHookContext & {
