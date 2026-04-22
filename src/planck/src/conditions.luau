@@ -7,7 +7,7 @@ type ConnectionLike = utils.ConnectionLike
 type ConnectFn<T, U...> = utils.ConnectFn<T, U...>
 type Callback<U...> = utils.Callback<U...>
 
-export type Condition<U...> = (U...) -> boolean
+export type Condition<U...> = (U...) -> any
 
 --- @class Conditions
 ---

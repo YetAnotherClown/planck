@@ -60,7 +60,7 @@ export type SystemTable<U...> = {
 	system: SystemFn<U...> | InitializerSystemFn<U...>,
 	phase: Phase?,
 	name: string?,
-	runConditions: { (U...) -> boolean }?,
+	runConditions: { Condition<T> }?,
 	[any]: any,
 }
 
@@ -206,17 +206,17 @@ export type Scheduler<U...> = {
 	addRunCondition: ((
 		self: Scheduler<U...>,
 		system: System<U...>,
-		fn: (U...) -> boolean,
+		fn: Condition<U...>,
 		...any
 	) -> Scheduler<U...>) & ((
 		self: Scheduler<U...>,
 		phase: Phase,
-		fn: (U...) -> boolean,
+		fn: Condition<U...>,
 		...any
 	) -> Scheduler<U...>) & ((
 		self: Scheduler<U...>,
 		pipeline: Pipeline,
-		fn: (U...) -> boolean,
+		fn: Condition<U...>,
 		...any
 	) -> Scheduler<U...>),
 
@@ -298,11 +298,11 @@ export type Scheduler<U...> = {
 	new: (U...) -> Scheduler<U...>,
 }
 
-type Condition = () -> boolean
+type Condition<U...> = (U...) -> any
 
-type isNot = (condition: Condition, ...any) -> Condition
-type runOnce = () -> Condition
-type timePassed = (time: number) -> Condition
+type isNot<U...> = (condition: Condition<U...>, ...any) -> Condition<U...>
+type runOnce<U...> = () -> Condition<U...>
+type timePassed<U...> = (time: number) -> Condition<U...>
 
 type GetDisconnectFn = () -> () -> ()
 type CollectEvents<U...> = () -> () -> (number, U...)
@@ -311,31 +311,31 @@ type OnEvent =
 	-- RBXScriptSignal & nil
 	(<U...>(
 		RBXScriptSignal<U...>
-	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
 	-- Instance & RBXScriptSignal
 	-- Instance & string
 	& (<U...>(
 		Instance,
 		RBXScriptSignal<U...> | string
-	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
 	-- SignalLike & nil
 	& (<U...>(
 		SignalLike<U...>
-	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
 	-- table & string
 	& (<U...>(
 		GenericTable,
 		string
-	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
 	-- table & connectable method
 	& (<T, U...>(
 		GenericTable,
 		(GenericTable, Callback<U...>, ...any) -> T?
-	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
 	-- connectable function
 	& (<T, U...>(
 		(Callback<U...>, ...any) -> T?
-	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
 
 return {
 	Phase = Phase :: Phase,
@@ -344,8 +344,8 @@ return {
 		new: <U...>(U...) -> Scheduler<U...>,
 	},
 
-	isNot = conditions.isNot :: isNot,
-	runOnce = conditions.runOnce :: runOnce,
-	timePassed = conditions.timePassed :: timePassed,
+	isNot = conditions.isNot :: isNot<...any>,
+	runOnce = conditions.runOnce :: runOnce<...any>,
+	timePassed = conditions.timePassed :: timePassed<...any>,
 	onEvent = conditions.onEvent :: OnEvent,
 }
