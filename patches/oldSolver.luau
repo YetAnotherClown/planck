@@ -97,8 +97,82 @@ type Plugin<U...> =
 		[any]: any,
 	}
 
+type InternalSystem<U...> = SystemFn<U...> | InitializerSystemFn<U...>
+
+type SystemInfo<U...> = {
+	system: InternalSystem<U...>,
+	run: InternalSystem<U...>,
+	cleanup: SystemFn<U...>?,
+	initialized: boolean,
+	name: string,
+	deltaTime: number?,
+	lastTime: number?,
+	timeLastLogged: number?,
+	recentLogs: { [string]: boolean }?,
+	logs: { string },
+	phase: Phase,
+}
+
+type PartialHookContext<U...> = {
+	scheduler: Scheduler<U...>,
+}
+
+type SystemHookContext<U...> = PartialHookContext<U...> & {
+	system: SystemInfo<U...>,
+}
+
+type SystemReplaceContext<U...> = PartialHookContext<U...> & {
+	new: SystemInfo<U...>,
+	old: SystemInfo<U...>,
+}
+
+type SystemErrorContext<U...> = PartialHookContext<U...> & {
+	system: SystemInfo<U...>,
+	error: unknown?,
+}
+
+type SystemHookId = "OuterSystemCall" | "InnerSystemCall" | "SystemCall"
+
+type SystemCallHookFn<U...> = (SystemCallContext<U...>) -> () -> ()
+type SystemCallContext<U...> = PartialHookContext<U...> & {
+	system: SystemInfo<U...>,
+	nextFn: () -> (),
+}
+
+type PhaseContext<U...> = PartialHookContext<U...> & {
+	phase: Phase,
+}
+
+type Hook<T, V = nil> = {
+	__T: T,
+	__U: V,
+}
+
+type Hooks<U...> = {
+	SystemAdd: Hook<SystemHookContext<U...>>,
+	SystemRemove: Hook<SystemHookContext<U...>>,
+	SystemReplace: Hook<SystemReplaceContext<U...>>,
+	SystemCleanup: Hook<SystemErrorContext<U...>>,
+	SystemError: Hook<SystemErrorContext<U...>>,
+	SystemTriedRun: Hook<SystemHookContext<U...>>,
+
+	OuterSystemCall: Hook<SystemCallContext<U...>, SystemCallHookFn<U...>>,
+	InnerSystemCall: Hook<SystemCallContext<U...>, SystemCallHookFn<U...>>,
+	SystemCall: Hook<SystemCallContext<U...>, SystemCallHookFn<U...>>,
+
+	PhaseAdd: Hook<PhaseContext<U...>>,
+	PhaseBegan: Hook<PhaseContext<U...>>,
+}
+
 export type Scheduler<U...> = {
 	addPlugin: (self: Scheduler<U...>, plugin: Plugin<U...>) -> Scheduler<U...>,
+
+	Hooks: Hooks<U...>,
+	addHook: <T, V>(
+		self: Scheduler<U...>,
+		hook: Hook<T, V>,
+		fn: (T) -> V
+	) -> (),
 
 	addSystem: (
 		self: Scheduler<U...>,
