@@ -13,7 +13,7 @@ export type SystemFn<U...> = Scheduler.SystemFn<U...>
 export type SystemTable<U...> = Scheduler.SystemTable<U...>
 export type InitializerSystemFn<U...> = Scheduler.InitializerSystemFn<U...>
 export type InitializerResult<U...> = Scheduler.InitializerResult<U...>
-export type CleaupFn<U...> = SystemFn<U...>
+export type CleanupFn<U...> = SystemFn<U...>
 
 return {
 	Phase = Phase,
