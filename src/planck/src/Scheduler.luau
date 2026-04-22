@@ -110,6 +110,11 @@ type Hooks = {
 	PhaseBegan: Hook<PhaseContext>,
 }
 
+--- @prop Hooks { [string]: string }
+--- @within Scheduler
+--- @since 0.3.0
+---
+--- See [creating plugins](/docs/plugins/creating).
 Scheduler.Hooks = (
 	{
 		SystemAdd = "SystemAdd",
@@ -130,6 +135,10 @@ Scheduler.Hooks = (
 
 type HookId = keyof<typeof(Scheduler.Hooks)>
 
+--- @within Scheduler
+--- @since 0.3.0
+---
+--- Allows for registering hooks, see [creating plugins](/docs/plugins/creating).
 function Scheduler.addHook<T, V, U...>(
 	self: Scheduler<U...>,
 	hook: Hook<T, V>,
