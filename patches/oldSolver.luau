@@ -1,0 +1,351 @@
+-- This is a patch for the old solver, just copy and paste it into:
+-- planck/src/init.luau
+
+local Phase = require(script.Phase) :: any
+local Pipeline = require(script.Pipeline) :: any
+local Scheduler = require(script.Scheduler) :: any
+
+local conditions = require(script.conditions) :: any
+
+type GenericTable = { [any]: any }
+type ConnectFn<T, U...> = (callback: (U...) -> ...any) -> T
+type Callback<U...> = (U...) -> ...any
+
+type SignalLike<U...> =
+	{
+		connect: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
+		[any]: any,
+	}
+	| {
+		Connect: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
+		[any]: any,
+	}
+	| {
+		on: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
+		[any]: any,
+	}
+	| {
+		On: (self: SignalLike<U...>, Callback<U...>, ...any?) -> any,
+		[any]: any,
+	}
+
+type ConnectionLike = RBXScriptConnection | {
+	disconnect: (self: ConnectionLike, ...any) -> any,
+	[any]: any,
+} | {
+	Disconnect: (self: ConnectionLike, ...any) -> any,
+	[any]: any,
+} | {
+	destroy: (self: ConnectionLike, ...any) -> any,
+	[any]: any,
+} | {
+	Destroy: (self: ConnectionLike, ...any) -> any,
+	[any]: any,
+} | (...any) -> any
+
+export type CleanupFn<U...> = (U...) -> ()
+export type SystemFn<U...> = (U...) -> ()
+
+export type InitializerResult<U...> = {
+	system: SystemFn<U...>?,
+	cleanup: CleanupFn<U...>?,
+}
+
+export type InitializerSystemFn<U...> =
+	| ((U...) -> SystemFn<U...>)
+	| ((U...) -> (SystemFn<U...>, CleanupFn<U...>))
+	| ((U...) -> InitializerResult<U...>)
+
+export type SystemTable<U...> = {
+	system: SystemFn<U...> | InitializerSystemFn<U...>,
+	phase: Phase?,
+	name: string?,
+	runConditions: { Condition<T> }?,
+	[any]: any,
+}
+
+export type System<U...> =
+	SystemFn<U...>
+	| InitializerSystemFn<U...>
+	| SystemTable<U...>
+
+export type Phase = {
+	PreStartup: Phase,
+	Startup: Phase,
+	PostStartup: Phase,
+
+	new: (debugName: string?) -> Phase,
+}
+
+export type Pipeline = {
+	Startup: Pipeline,
+
+	insert: (self: Pipeline, phase: Phase) -> Pipeline,
+	insertAfter: (self: Pipeline, phase: Phase, after: Phase) -> Pipeline,
+	insertBefore: (self: Pipeline, phase: Phase, before: Phase) -> Pipeline,
+	new: (debugName: string?) -> Pipeline,
+}
+
+type Plugin<U...> =
+	{
+		build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
+		[any]: any,
+	}
+	| {
+		build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
+		cleanup: (self: Plugin<U...>) -> (),
+		[any]: any,
+	}
+
+type InternalSystem<U...> = SystemFn<U...> | InitializerSystemFn<U...>
+
+type SystemInfo<U...> = {
+	system: InternalSystem<U...>,
+	run: InternalSystem<U...>,
+	cleanup: SystemFn<U...>?,
+	initialized: boolean,
+	name: string,
+	deltaTime: number?,
+	lastTime: number?,
+	timeLastLogged: number?,
+	recentLogs: { [string]: boolean }?,
+	logs: { string },
+	phase: Phase,
+}
+
+type PartialHookContext<U...> = {
+	scheduler: Scheduler<U...>,
+}
+
+type SystemHookContext<U...> = PartialHookContext<U...> & {
+	system: SystemInfo<U...>,
+}
+
+type SystemReplaceContext<U...> = PartialHookContext<U...> & {
+	new: SystemInfo<U...>,
+	old: SystemInfo<U...>,
+}
+
+type SystemErrorContext<U...> = PartialHookContext<U...> & {
+	system: SystemInfo<U...>,
+	error: unknown?,
+}
+
+type SystemHookId = "OuterSystemCall" | "InnerSystemCall" | "SystemCall"
+
+type SystemCallHookFn<U...> = (SystemCallContext<U...>) -> () -> ()
+type SystemCallContext<U...> = PartialHookContext<U...> & {
+	system: SystemInfo<U...>,
+	nextFn: () -> (),
+}
+
+type PhaseContext<U...> = PartialHookContext<U...> & {
+	phase: Phase,
+}
+
+type Hook<T, V = nil> = {
+	__T: T,
+	__U: V,
+}
+
+type Hooks<U...> = {
+	SystemAdd: Hook<SystemHookContext<U...>>,
+	SystemRemove: Hook<SystemHookContext<U...>>,
+	SystemReplace: Hook<SystemReplaceContext<U...>>,
+	SystemCleanup: Hook<SystemErrorContext<U...>>,
+	SystemError: Hook<SystemErrorContext<U...>>,
+	SystemTriedRun: Hook<SystemHookContext<U...>>,
+
+	OuterSystemCall: Hook<SystemCallContext<U...>, SystemCallHookFn<U...>>,
+	InnerSystemCall: Hook<SystemCallContext<U...>, SystemCallHookFn<U...>>,
+	SystemCall: Hook<SystemCallContext<U...>, SystemCallHookFn<U...>>,
+
+	PhaseAdd: Hook<PhaseContext<U...>>,
+	PhaseBegan: Hook<PhaseContext<U...>>,
+}
+
+export type Scheduler<U...> = {
+	addPlugin: (self: Scheduler<U...>, plugin: Plugin<U...>) -> Scheduler<U...>,
+
+	Hooks: Hooks<U...>,
+	addHook: <T, V>(
+		self: Scheduler<U...>,
+		hook: Hook<T, V>,
+		fn: (T) -> V
+	) -> (),
+
+	addSystem: (
+		self: Scheduler<U...>,
+		system: System<U...>,
+		phase: Phase?
+	) -> Scheduler<U...>,
+
+	addSystems: (
+		self: Scheduler<U...>,
+		systems: { System<U...> },
+		phase: Phase?
+	) -> Scheduler<U...>,
+
+	editSystem: (
+		self: Scheduler<U...>,
+		system: System<U...>,
+		new: Phase
+	) -> Scheduler<U...>,
+
+	replaceSystem: (
+		self: Scheduler<U...>,
+		system: System<U...>,
+		new: System<U...>
+	) -> Scheduler<U...>,
+
+	removeSystem: (
+		self: Scheduler<U...>,
+		system: System<U...>
+	) -> Scheduler<U...>,
+
+	addRunCondition: ((
+		self: Scheduler<U...>,
+		system: System<U...>,
+		fn: Condition<U...>,
+		...any
+	) -> Scheduler<U...>) & ((
+		self: Scheduler<U...>,
+		phase: Phase,
+		fn: Condition<U...>,
+		...any
+	) -> Scheduler<U...>) & ((
+		self: Scheduler<U...>,
+		pipeline: Pipeline,
+		fn: Condition<U...>,
+		...any
+	) -> Scheduler<U...>),
+
+	run: ((self: Scheduler<U...>, system: System<U...>) -> Scheduler<U...>)
+		& ((self: Scheduler<U...>, phase: Phase) -> Scheduler<U...>)
+		& ((self: Scheduler<U...>, pipeline: Pipeline) -> Scheduler<U...>),
+
+	runAll: (self: Scheduler<U...>) -> Scheduler<U...>,
+
+	getDeltaTime: (self: Scheduler<U...>) -> number,
+
+	insert: ((
+		self: Scheduler<U...>,
+		dependency: Phase | Pipeline
+	) -> Scheduler<U...>)
+		-- RBXScriptSignal & nil
+		& ((
+			self: Scheduler<U...>,
+			dependency: Phase | Pipeline,
+			signal: RBXScriptSignal<U...>
+		) -> Scheduler<U...>)
+		-- Instance & RBXScriptSignal
+		-- Instance & string
+		& ((
+			self: Scheduler<U...>,
+			dependency: Phase | Pipeline,
+			instance: Instance,
+			event: RBXScriptSignal<U...> | string
+		) -> Scheduler<U...>)
+		-- SignalLike & nil
+		& ((
+			self: Scheduler<U...>,
+			dependency: Phase | Pipeline,
+			signal: SignalLike<U...>
+		) -> Scheduler<U...>)
+		-- table & string
+		& ((
+			self: Scheduler<U...>,
+			dependency: Phase | Pipeline,
+			table: GenericTable,
+			event: string
+		) -> Scheduler<U...>)
+		-- table & connectable method
+		& (<T>(
+			self: Scheduler<U...>,
+			dependency: Phase | Pipeline,
+			instance: GenericTable,
+			connectMethod: (GenericTable, Callback<U...>, ...any) -> T
+		) -> Scheduler<U...>)
+		-- connectable function
+		& (<T>(
+			self: Scheduler<U...>,
+			dependency: Phase | Pipeline,
+			connectFn: (Callback<U...>, ...any) -> T
+		) -> Scheduler<U...>),
+
+	insertAfter: ((
+		self: Scheduler<U...>,
+		phase: Phase,
+		after: Phase | Pipeline
+	) -> Scheduler<U...>) & ((
+		self: Scheduler<U...>,
+		pipeline: Pipeline,
+		after: Phase | Pipeline
+	) -> Scheduler<U...>),
+
+	insertBefore: ((
+		self: Scheduler<U...>,
+		phase: Phase,
+		before: Phase | Pipeline
+	) -> Scheduler<U...>) & ((
+		self: Scheduler<U...>,
+		pipeline: Pipeline,
+		before: Phase | Pipeline
+	) -> Scheduler<U...>),
+
+	cleanup: (self: Scheduler<U...>) -> (),
+
+	new: (U...) -> Scheduler<U...>,
+}
+
+type Condition<U...> = (U...) -> any
+
+type isNot<U...> = (condition: Condition<U...>, ...any) -> Condition<U...>
+type runOnce<U...> = () -> Condition<U...>
+type timePassed<U...> = (time: number) -> Condition<U...>
+
+type GetDisconnectFn = () -> () -> ()
+type CollectEvents<U...> = () -> () -> (number, U...)
+
+type OnEvent =
+	-- RBXScriptSignal & nil
+	(<U...>(
+		RBXScriptSignal<U...>
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
+	-- Instance & RBXScriptSignal
+	-- Instance & string
+	& (<U...>(
+		Instance,
+		RBXScriptSignal<U...> | string
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
+	-- SignalLike & nil
+	& (<U...>(
+		SignalLike<U...>
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
+	-- table & string
+	& (<U...>(
+		GenericTable,
+		string
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
+	-- table & connectable method
+	& (<T, U...>(
+		GenericTable,
+		(GenericTable, Callback<U...>, ...any) -> T?
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
+	-- connectable function
+	& (<T, U...>(
+		(Callback<U...>, ...any) -> T?
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
+
+return {
+	Phase = Phase :: Phase,
+	Pipeline = Pipeline :: Pipeline,
+	Scheduler = Scheduler :: {
+		new: <U...>(U...) -> Scheduler<U...>,
+	},
+
+	isNot = conditions.isNot :: isNot<...any>,
+	runOnce = conditions.runOnce :: runOnce<...any>,
+	timePassed = conditions.timePassed :: timePassed<...any>,
+	onEvent = conditions.onEvent :: OnEvent,
+}

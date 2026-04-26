@@ -1,6 +1,8 @@
---!nonstrict
 local DependencyGraph = require(script.Parent.DependencyGraph)
 local Phase = require(script.Parent.Phase)
+
+type DependencyGraph<T> = DependencyGraph.DependencyGraph<T>
+type Phase = Phase.Phase
 
 --- @class Pipeline
 ---
@@ -10,7 +12,7 @@ local Phase = require(script.Parent.Phase)
 local Pipeline = {}
 Pipeline.__index = Pipeline
 
-function Pipeline:__tostring()
+function Pipeline.__tostring(self: Pipeline): string
 	return self._name
 end
 
@@ -20,7 +22,7 @@ end
 --- @return Pipeline
 ---
 --- Adds a Phase to the Pipeline, ordering it implicitly.
-function Pipeline:insert(phase)
+function Pipeline.insert(self: Pipeline, phase: Phase): Pipeline
 	self.dependencyGraph:insert(phase)
 	return self
 end
@@ -32,7 +34,11 @@ end
 --- @return Pipeline
 ---
 --- Adds a Phase to the Pipeline after another Phase, ordering it explicitly.
-function Pipeline:insertAfter(phase, afterPhase)
+function Pipeline.insertAfter(
+	self: Pipeline,
+	phase: Phase,
+	afterPhase: Phase
+): Pipeline
 	local i = table.find(self.dependencyGraph.nodes, afterPhase)
 	assert(
 		i,
@@ -50,7 +56,11 @@ end
 --- @return Pipeline
 ---
 --- Adds a Phase to the Pipeline before another Phase, ordering it explicitly.
-function Pipeline:insertBefore(phase, beforePhase)
+function Pipeline.insertBefore(
+	self: Pipeline,
+	phase: Phase,
+	beforePhase: Phase
+): Pipeline
 	local i = table.find(self.dependencyGraph.nodes, beforePhase)
 	assert(
 		i,
@@ -65,12 +75,15 @@ end
 ---
 --- Creates a new Pipeline, with an optional name to use for debugging.
 --- When no name is provided, the script and line number will be used.
-function Pipeline.new(name: string?)
+function Pipeline.new(name: string?): Pipeline
 	name = name or debug.info(2, "sl")
+
+	local dependencyGraph: DependencyGraph<Phase> = DependencyGraph.new()
+
 	return setmetatable({
 		_name = name,
 		_type = "pipeline",
-		dependencyGraph = DependencyGraph.new(),
+		dependencyGraph = dependencyGraph,
 	}, Pipeline)
 end
 
@@ -82,5 +95,11 @@ Pipeline.Startup = Pipeline.new()
 	:insert(Phase.PreStartup)
 	:insert(Phase.Startup)
 	:insert(Phase.PostStartup)
+
+export type Pipeline = setmetatable<{
+	_name: string,
+	_type: "pipeline",
+	dependencyGraph: DependencyGraph<Phase>,
+}, typeof(Pipeline)>
 
 return Pipeline

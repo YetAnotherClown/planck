@@ -152,7 +152,79 @@ export interface SystemTable<T extends unknown[]> extends BaseSystemTable<T> {
  * };
  * ```
  */
-export type System<T extends unknown[]> = InitializerSystemFn<T> | SystemFn<T> | SystemTable<T>;
+export type System<T extends unknown[]> =
+  | InitializerSystemFn<T>
+  | SystemFn<T>
+  | SystemTable<T>;
+
+type InternalSystem<T extends unknown[]> = SystemFn<T> | InitializerSystemFn<T>;
+
+type SystemInfo<T extends unknown[]> = {
+  system: InternalSystem<T>;
+  run: InternalSystem<T>;
+  cleanup?: SystemFn<T>;
+  initialized: boolean;
+  name: string;
+  deltaTime?: number;
+  lastTime?: number;
+  timeLastLogged?: number;
+  recentLogs?: { [key: string]: boolean };
+  logs: any[];
+  phase: Phase;
+};
+
+type Hook<T, V = void> = {
+  readonly __context: T;
+  readonly __return: V;
+};
+
+type PartialHookContext<T extends unknown[]> = {
+  scheduler: Scheduler<T>;
+};
+
+type SystemHookContext<T extends unknown[]> = PartialHookContext<T> & {
+  system: SystemInfo<T>;
+};
+
+type SystemReplaceContext<T extends unknown[]> = PartialHookContext<T> & {
+  new: SystemInfo<T>;
+  old: SystemInfo<T>;
+};
+
+type SystemErrorContext<T extends unknown[]> = PartialHookContext<T> & {
+  system: SystemInfo<T>;
+  error?: unknown;
+};
+
+type SystemCallHookFn = () => void;
+type SystemCallCallback<T extends unknown[]> = (
+  context: SystemCallContext<T>
+) => SystemCallHookFn;
+
+type SystemCallContext<T extends unknown[]> = PartialHookContext<T> & {
+  system: SystemInfo<T>;
+  nextFn: SystemCallHookFn;
+};
+
+type PhaseContext<T extends unknown[]> = PartialHookContext<T> & {
+  phase: Phase;
+};
+
+interface Hooks<T extends unknown[]> {
+  SystemAdd: Hook<SystemHookContext<T>>;
+  SystemRemove: Hook<SystemHookContext<T>>;
+  SystemReplace: Hook<SystemReplaceContext<T>>;
+  SystemCleanup: Hook<SystemErrorContext<T>>;
+  SystemError: Hook<SystemErrorContext<T>>;
+  SystemTriedRun: Hook<SystemHookContext<T>>;
+
+  OuterSystemCall: Hook<SystemCallContext<T>, SystemCallHookFn>;
+  InnerSystemCall: Hook<SystemCallContext<T>, SystemCallHookFn>;
+  SystemCall: Hook<SystemCallContext<T>, SystemCallHookFn>;
+
+  PhaseAdd: Hook<PhaseContext<T>>;
+  PhaseBegan: Hook<PhaseContext<T>>;
+}
 
 /**
  * An Object which handles scheduling Systems to run within different Phases.
@@ -171,6 +243,19 @@ export class Scheduler<T extends unknown[]> {
    * Docs](/docs/plugins) for more information.
    */
   addPlugin(plugin: Plugin<T>): this;
+
+  /**
+   * See [creating plugins](https://yetanotherclown.github.io/planck/docs/plugins/creating).
+   */
+  Hooks: Hooks<T>;
+
+  /**
+   * Allows for registering hooks, see [creating plugins](https://yetanotherclown.github.io/planck/docs/plugins/creating).
+   */
+  addHook<Context, Return>(
+    hook: Hook<Context, Return>,
+    fn: (context: Context) => Return
+  ): void;
 
   /**
    * Adds the System to the Scheduler, scheduling it to be ran implicitly within
@@ -244,7 +329,11 @@ export class Scheduler<T extends unknown[]> {
    * );
    * ```
    */
-  insert<E extends EventInstance>(phase: Phase, instance: E, event: ExtractEvents<E>): this;
+  insert<E extends EventInstance>(
+    phase: Phase,
+    instance: E,
+    event: ExtractEvents<E>
+  ): this;
   /**
    * Initializes the Phase within the Scheduler, ordering it implicitly by
    * setting it as a dependent of the previous Phase/Pipeline, and scheduling it
@@ -272,7 +361,11 @@ export class Scheduler<T extends unknown[]> {
    * );
    * ```
    */
-  insert<E extends EventInstance>(pipeline: Pipeline, instance: E, event: ExtractEvents<E>): this;
+  insert<E extends EventInstance>(
+    pipeline: Pipeline,
+    instance: E,
+    event: ExtractEvents<E>
+  ): this;
   /**
    * Initializes the Pipeline and it's Phases within the Scheduler, ordering the
    * Pipeline implicitly by setting it as a dependent of the previous

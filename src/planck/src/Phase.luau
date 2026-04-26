@@ -5,7 +5,7 @@
 local Phase = {}
 Phase.__index = Phase
 
-function Phase:__tostring()
+function Phase.__tostring(self: Phase)
 	return self._name
 end
 
@@ -13,7 +13,7 @@ end
 ---
 --- Creates a new Phase, with an optional name to use for debugging.
 --- When no name is provided, the script and line number will be used.
-function Phase.new(name: string?)
+function Phase.new(name: string?): Phase
 	name = name or debug.info(2, "sl")
 	return setmetatable({
 		_name = name,
@@ -37,5 +37,10 @@ end
 Phase.PreStartup = Phase.new("PreStartup")
 Phase.Startup = Phase.new("Startup")
 Phase.PostStartup = Phase.new("PostStartup")
+
+export type Phase = setmetatable<{
+	_name: string,
+	_type: "phase",
+}, typeof(Phase)>
 
 return Phase

@@ -8,7 +8,8 @@ local topoRuntime = require(script.Parent.Parent.topoRuntime)
 local Queue = require(script.Parent.Parent.Queue)
 
 local EVENT_CONNECT_METHODS = { "Connect", "on", "connect" }
-local CONNECTION_DISCONNECT_METHODS = { "Disconnect", "Destroy", "disconnect", "destroy" }
+local CONNECTION_DISCONNECT_METHODS =
+	{ "Disconnect", "Destroy", "disconnect", "destroy" }
 
 local function connect(object, callback, event)
 	local eventObject = object
@@ -61,7 +62,10 @@ local function disconnect(connection)
 end
 
 local function validateConnection(connection)
-	if typeof(connection) == "function" or typeof(connection) == "RBXScriptConnection" then
+	if
+		typeof(connection) == "function"
+		or typeof(connection) == "RBXScriptConnection"
+	then
 		return
 	end
 
@@ -73,7 +77,9 @@ local function validateConnection(connection)
 		return
 	end
 
-	error("Ensure passed event returns a cleanup function, or a table with a 'Disconnect' or a 'Destroy' method!")
+	error(
+		"Ensure passed event returns a cleanup function, or a table with a 'Disconnect' or a 'Destroy' method!"
+	)
 end
 
 local function cleanup(storage)

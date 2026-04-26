@@ -1,5 +1,5 @@
 local utils = require(script.Parent.utils)
-local getConnectFunction = utils.getConnectFunction
+local getConnectFn = utils.getConnectFn
 
 type GenericTable = utils.GenericTable
 type SignalLike<U...> = utils.SignalLike<U...>
@@ -7,7 +7,7 @@ type ConnectionLike = utils.ConnectionLike
 type ConnectFn<T, U...> = utils.ConnectFn<T, U...>
 type Callback<U...> = utils.Callback<U...>
 
-type Condition = () -> boolean
+export type Condition<U...> = (U...) -> any
 
 --- @class Conditions
 ---
@@ -19,10 +19,11 @@ type Condition = () -> boolean
 ---
 --- A Throttle condition which checks whether the amount of
 --- time given has passed or not.
-local function timePassed(time: number): Condition
-	local storedTime
+local function timePassed<U...>(time: number): Condition<U...>
+	local storedTime: number?
 
-	return function()
+	-- selene: allow(unused_variable)
+	return function(...)
 		if storedTime == nil or os.clock() - storedTime >= time then
 			storedTime = os.clock()
 			return true
@@ -36,10 +37,11 @@ end
 --- @return hasRanOnce () -> boolean
 ---
 --- Checks whether the condition has been called once before
-local function runOnce(): Condition
+local function runOnce<U...>(): Condition<U...>
 	local hasRan = false
 
-	return function()
+	-- selene: allow(unused_variable)
+	return function(...)
 		if not hasRan then
 			hasRan = true
 			return true
@@ -53,7 +55,7 @@ type CollectEvents<U...> = () -> () -> (number, U...)
 
 local conditionToCleanupFn = {}
 
-local function cleanupCondition(condition: Condition)
+local function cleanupCondition(condition: Condition<...any>)
 	local cleanup = conditionToCleanupFn[condition]
 	if cleanup then
 		cleanup()
@@ -67,31 +69,31 @@ type OnEventFn =
 	-- RBXScriptSignal & nil
 	(<U...>(
 		RBXScriptSignal<U...>
-	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
 	-- Instance & RBXScriptSignal
 	-- Instance & string
 	& (<U...>(
 		Instance,
 		RBXScriptSignal<U...> | string
-	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
 	-- SignalLike & nil
 	& (<U...>(
 		SignalLike<U...>
-	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
 	-- table & string
 	& (<U...>(
 		GenericTable,
 		string
-	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
 	-- table & connectable method
 	& (<T, U...>(
 		GenericTable,
 		(GenericTable, Callback<U...>, ...any) -> T?
-	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
 	-- connectable function
 	& (<T, U...>(
 		(Callback<U...>, ...any) -> T?
-	) -> (Condition, CollectEvents<U...>, GetDisconnectFn))
+	) -> (Condition<U...>, CollectEvents<U...>, GetDisconnectFn))
 
 --- @within Conditions
 --- @param instance RBXScriptSignal | Instance | SignalLike<...any> | GenericTable | ((Callback<U...>,...any) -> ...any)
@@ -107,12 +109,13 @@ type OnEventFn =
 local function onEvent<U...>(
 	instance,
 	event
-): (Condition, CollectEvents<U...>, () -> () -> ())
-	local connect = getConnectFunction(instance, event)
+): (Condition<U...>, CollectEvents<U...>, (
+) -> () -> ())
+	local connect = getConnectFn(instance, event)
 	assert(connect, "Event passed to .onEvent is not valid")
 
 	local newEvent = false
-	local queue = {}
+	local queue: { { any } } = {}
 
 	local connection: ConnectionLike?
 
@@ -171,11 +174,10 @@ end
 --- @return inverseCondition () -> boolean
 ---
 --- Inverses a given condition.
-
 -- selene: allow(unused_variable)
-local function isNot(condition: Condition, ...: any): Condition
-	return function()
-		return not condition()
+local function isNot<U...>(condition: Condition<U...>, ...: unknown): Condition<U...>
+	return function(...)
+		return not condition(...)
 	end
 end
 

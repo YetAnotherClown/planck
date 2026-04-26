@@ -35,16 +35,19 @@ type ConnectionObject = {
 	destroy: (() -> ())?,
 } | () -> ()
 
-type CustomEvent = {
-	Connect: (...any) -> ConnectionObject,
-	[any]: any,
-} | {
-	on: (...any) -> ConnectionObject,
-	[any]: any,
-} | {
-	connect: (...any) -> ConnectionObject,
-	[any]: any,
-}
+type CustomEvent =
+	{
+		Connect: (...any) -> ConnectionObject,
+		[any]: any,
+	}
+	| {
+		on: (...any) -> ConnectionObject,
+		[any]: any,
+	}
+	| {
+		connect: (...any) -> ConnectionObject,
+		[any]: any,
+	}
 
 local topoRuntime
 local export = {} :: any
@@ -81,6 +84,9 @@ end
 if not topoRuntime then
 	setHooks(script)
 end
+
+-- selene: allow(incorrect_standard_library_use)
+assert(topoRuntime)
 
 export.useHookState = topoRuntime.useHookState
 

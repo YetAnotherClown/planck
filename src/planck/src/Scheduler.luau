@@ -1,47 +1,69 @@
---!nonstrict
 local DependencyGraph = require(script.Parent.DependencyGraph)
 local Pipeline = require(script.Parent.Pipeline)
 local Phase = require(script.Parent.Phase)
 
+type DependencyGraph<T> = DependencyGraph.DependencyGraph<T>
+type Pipeline = Pipeline.Pipeline
+type Phase = Phase.Phase
+
 local utils = require(script.Parent.utils)
-local hooks = require(script.Parent.hooks)
 local conditions = require(script.Parent.conditions)
 
 local getSystem = utils.getSystem
 local getSystemName = utils.getSystemName
+local getEventIdentifier = utils.getEventIdentifier
 
+local isSystem = utils.isSystem
 local isPhase = utils.isPhase
 local isPipeline = utils.isPipeline
-
 local isValidEvent = utils.isValidEvent
-local getEventIdentifier = utils.getEventIdentifier
+
+type GenericTable = utils.GenericTable
+type SignalLike<U...> = utils.SignalLike<U...>
+type ConnectionLike = utils.ConnectionLike
+type ConnectFn<T, U...> = utils.ConnectFn<T, U...>
+type Callback<U...> = utils.Callback<U...>
+
+export type SystemFn<U...> = utils.SystemFn<U...>
+export type InitializerSystemFn<U...> = utils.InitializerSystemFn<U...>
+export type InitializerResult<U...> = utils.InitializerResult<U...>
+
+type InternalSystem<U...> = utils.InternalSystem<U...>
+export type System<U...> = utils.System<U...>
+export type SystemTable<U...> = utils.SystemTable<U...>
+
+type Condition<U...> = conditions.Condition<U...>
+
+type Vec<T> = { T }
+type Map<K, V> = { [K]: V }
+
+type Plugin = {
+	build: (self: Plugin, scheduler: Scheduler<...unknown>) -> (),
+	cleanup: (self: Plugin) -> (),
+	new: (...any) -> Plugin,
+	[unknown]: unknown,
+}
+
+type SystemInfo<U...> = {
+	system: InternalSystem<U...>,
+	run: InternalSystem<U...>,
+	cleanup: SystemFn<U...>?,
+	initialized: boolean,
+	name: string,
+	deltaTime: number?,
+	lastTime: number?,
+	timeLastLogged: number?,
+	recentLogs: { [string]: boolean }?,
+	logs: { string },
+	phase: Phase,
+}
+
+type Dependent<U...> = Pipeline | Phase | System<U...>
+type Dependency = Pipeline | Phase
 
 -- Recent errors in Planks itself
 local recentLogs = {}
 local timeLastLogged = os.clock()
-
---- @type SystemFn ((U...) -> ())
---- @within Scheduler
---- Standard system function that runs every time it's scheduled
-
---- @type InitializerSystemFn ((U...) -> (SystemFn<U...> | (SystemFn<U...>, CleanupFn)))
---- @within Scheduler
---- Initializer system that returns the runtime function, optionally with cleanup
-
---- @type CleanupFn (() -> ())
---- @within Scheduler
---- Cleanup function called when system is removed
-
---- @interface SystemTable
---- @within Scheduler
---- .system SystemFn<U...> | InitializerSystemFn<U...>
---- .phase Phase?
---- .name string?
---- .runConditions {RunCondition}?
---- .[any] any
-
---- @type System SystemFn<U...> | SystemTable<U...>
---- @within Scheduler
 
 --- @class Scheduler
 ---
@@ -52,22 +74,243 @@ local timeLastLogged = os.clock()
 local Scheduler = {}
 Scheduler.__index = Scheduler
 
-Scheduler.Hooks = hooks.Hooks
-
 --- @method addPlugin
 --- @within Scheduler
 --- @param plugin PlanckPlugin
 ---
 --- Initializes a plugin with the scheduler, see the [Plugin Docs](/docs/plugins) for more information.
-function Scheduler:addPlugin(plugin)
+function Scheduler.addPlugin<U...>(self: Scheduler<U...>, plugin: Plugin)
 	plugin:build(self)
 	table.insert(self._plugins, plugin)
 	return self
 end
 
-function Scheduler:_addHook(hook, fn)
-	assert(self._hooks[hook], `Unknown Hook: {hook}`)
-	table.insert(self._hooks[hook], fn)
+type PartialHookContext = {
+	scheduler: Scheduler<...unknown>,
+}
+
+type Hook<T, V = nil> = {
+	__T: T,
+	__U: V,
+}
+
+type Hooks = {
+	SystemAdd: Hook<SystemHookContext>,
+	SystemRemove: Hook<SystemHookContext>,
+	SystemReplace: Hook<SystemReplaceContext>,
+	SystemCleanup: Hook<SystemErrorContext>,
+	SystemError: Hook<SystemErrorContext>,
+	SystemTriedRun: Hook<SystemHookContext>,
+
+	OuterSystemCall: Hook<SystemCallContext, SystemCallHookFn>,
+	InnerSystemCall: Hook<SystemCallContext, SystemCallHookFn>,
+	SystemCall: Hook<SystemCallContext, SystemCallHookFn>,
+
+	PhaseAdd: Hook<PhaseContext>,
+	PhaseBegan: Hook<PhaseContext>,
+}
+
+--- @prop Hooks { [string]: string }
+--- @within Scheduler
+--- @since 0.3.0
+---
+--- See [creating plugins](/docs/plugins/creating).
+Scheduler.Hooks = (
+	{
+		SystemAdd = "SystemAdd",
+		SystemRemove = "SystemRemove",
+		SystemReplace = "SystemReplace",
+		SystemCleanup = "SystemCleanup",
+		SystemError = "SystemError",
+		SystemTriedRun = "SystemTriedRun",
+
+		OuterSystemCall = "OuterSystemCall",
+		InnerSystemCall = "InnerSystemCall",
+		SystemCall = "SystemCall",
+
+		PhaseAdd = "PhaseAdd",
+		PhaseBegan = "PhaseBegan",
+	} :: any
+) :: Hooks
+
+type HookId = keyof<typeof(Scheduler.Hooks)>
+
+--- @within Scheduler
+--- @since 0.3.0
+---
+--- Allows for registering hooks, see [creating plugins](/docs/plugins/creating).
+function Scheduler.addHook<T, V, U...>(
+	self: Scheduler<U...>,
+	hook: Hook<T, V>,
+	fn: (T) -> V
+)
+	local hookId: HookId = hook :: any
+
+	assert(self._hooks[hookId], `Unknown Hook: {hook}`)
+	table.insert(self._hooks[hookId], fn)
+end
+
+--- @within Scheduler
+--- @deprecated
+--- @private
+--- @since 0.3.0
+---
+--- Internal method for adding hooks maintained for backwards compatibility.
+--- Use [Scheduler:addHook] instead.
+Scheduler._addHook = Scheduler.addHook
+
+local function callHooks<U...>(
+	hooks: Vec<(PartialHookContext) -> unknown>,
+	info: PartialHookContext
+)
+	for _, hook in hooks do
+		local success, err = pcall(hook, info)
+		if not success then
+			warn("Unexpected error in hook:", err)
+		end
+	end
+end
+
+type SystemHookContext = PartialHookContext & {
+	system: SystemInfo<...any>,
+}
+
+function Scheduler._systemAdd<U...>(
+	self: Scheduler<U...>,
+	systemInfo: SystemInfo<U...>
+)
+	local context = {
+		scheduler = self,
+		system = systemInfo,
+	}
+
+	callHooks(self._hooks["SystemAdd"], context)
+end
+
+function Scheduler._systemRemove<U...>(
+	self: Scheduler<U...>,
+	systemInfo: SystemInfo<U...>
+)
+	local context: SystemHookContext = {
+		scheduler = self,
+		system = systemInfo :: any,
+	}
+
+	callHooks(self._hooks["SystemRemove"], context)
+end
+
+type SystemReplaceContext = PartialHookContext & {
+	new: SystemInfo<...any>,
+	old: SystemInfo<...any>,
+}
+
+function Scheduler._systemReplace<U...>(
+	self: Scheduler<U...>,
+	oldSystemInfo: SystemInfo<U...>,
+	newSystemInfo: SystemInfo<U...>
+)
+	local context: SystemReplaceContext = {
+		scheduler = self,
+		new = newSystemInfo :: any,
+		old = oldSystemInfo :: any,
+	}
+
+	callHooks(self._hooks["SystemReplace"], context)
+end
+
+type SystemErrorContext = PartialHookContext & {
+	system: SystemInfo<...any>,
+	error: unknown?,
+}
+
+function Scheduler._systemCleanup<E, U...>(
+	self: Scheduler<U...>,
+	systemInfo,
+	cleanupError: E?
+)
+	local context: SystemErrorContext = {
+		scheduler = self,
+		system = systemInfo,
+		error = cleanupError,
+	}
+
+	callHooks(self._hooks["SystemCleanup"], context)
+end
+
+function Scheduler._systemError<E, U...>(self: Scheduler<U...>, systemInfo, err: E)
+	local context: SystemErrorContext = {
+		scheduler = self,
+		system = systemInfo,
+		error = err,
+	}
+
+	callHooks(self._hooks["SystemError"], context)
+end
+
+function Scheduler._systemTriedRun<T, U...>(self: Scheduler<U...>, systemInfo)
+	local context: SystemHookContext = {
+		scheduler = self,
+		system = systemInfo,
+	}
+
+	callHooks(self._hooks["SystemTriedRun"], context)
+end
+
+type SystemHookId = "OuterSystemCall" | "InnerSystemCall" | "SystemCall"
+
+type SystemCallHookFn = () -> ()
+type SystemCallCallback = (SystemCallContext) -> SystemCallHookFn
+type SystemCallContext = PartialHookContext & {
+	system: SystemInfo<...any>,
+	nextFn: SystemCallHookFn,
+}
+
+function Scheduler._systemCall<T, U...>(
+	self: Scheduler<U...>,
+	hookName: SystemHookId,
+	systemInfo: SystemInfo<U...>,
+	nextFn: SystemCallHookFn
+)
+	for _, hook in self._hooks[hookName] :: Vec<SystemCallCallback> do
+		local context: SystemCallContext = {
+			scheduler = self,
+			system = systemInfo :: any,
+			nextFn = nextFn,
+		}
+
+		nextFn = hook(context)
+
+		if not nextFn then
+			local source, line = debug.info(hook, "sl")
+			warn(
+				`{source}:{line}: Expected 'SystemCall' hook to return a function`
+			)
+		end
+	end
+
+	nextFn()
+end
+
+type PhaseContext = PartialHookContext & {
+	phase: Phase,
+}
+
+function Scheduler._phaseAdd<U...>(self: Scheduler<U...>, phase: Phase)
+	local context: PhaseContext = {
+		scheduler = self,
+		phase = phase,
+	}
+
+	callHooks(self._hooks["PhaseAdd"], context)
+end
+
+function Scheduler._phaseBegan<U...>(self: Scheduler<U...>, phase: Phase)
+	local context: PhaseContext = {
+		scheduler = self,
+		phase = phase,
+	}
+
+	callHooks(self._hooks["PhaseBegan"], context)
 end
 
 --- @method getDeltaTime
@@ -76,7 +319,7 @@ end
 ---
 --- Returns the time since the system was ran last.
 --- This must be used within a registered system.
-function Scheduler:getDeltaTime()
+function Scheduler.getDeltaTime<U...>(self: Scheduler<U...>)
 	if self._currentSystem then
 		return self._currentSystem.deltaTime or 0
 	end
@@ -84,7 +327,7 @@ function Scheduler:getDeltaTime()
 	local systemFn = debug.info(2, "f")
 	if not systemFn or not self._systemInfo[systemFn] then
 		error(
-			"Scheduler:getDeltaTime() must be used within a registered system"
+			"Scheduler.getDeltaTime<U...>(self: Scheduler<U...>) must be used within a registered system"
 		)
 	end
 
@@ -92,13 +335,19 @@ function Scheduler:getDeltaTime()
 end
 
 -- Inspiration from https://github.com/matter-ecs/matter <3
-function Scheduler:_handleLogs(systemInfo)
+function Scheduler._handleLogs<U...>(_: Scheduler<U...>, systemInfo: SystemInfo<U...>)
 	if not systemInfo.timeLastLogged then
 		systemInfo.timeLastLogged = os.clock()
 	end
 
 	if not systemInfo.recentLogs then
 		systemInfo.recentLogs = {}
+	end
+
+	-- selene: allow(incorrect_standard_library_use)
+	do
+		assert(systemInfo.timeLastLogged)
+		assert(systemInfo.recentLogs)
 	end
 
 	if os.clock() - systemInfo.timeLastLogged > 10 then
@@ -110,7 +359,8 @@ function Scheduler:_handleLogs(systemInfo)
 
 	for _, logMessage in systemInfo.logs do
 		if not systemInfo.recentLogs[logMessage] then
-			task.spawn(error, logMessage, 0)
+			-- LUAU FUTURE: Inference bug
+			task.spawn<<(string, number)>>(error, logMessage, 0)
 			warn(
 				`Planck: Error occurred in system{string.len(name) > 0 and ` '{name}'` or ""}, this error will be ignored for 10 seconds`
 			)
@@ -121,7 +371,11 @@ function Scheduler:_handleLogs(systemInfo)
 	table.clear(systemInfo.logs)
 end
 
-function Scheduler:runSystem(system, justInitialized)
+function Scheduler.runSystem<U...>(
+	self: Scheduler<U...>,
+	system: System<U...>,
+	justInitialized: boolean
+)
 	local systemInfo = self._systemInfo[system]
 	local now = os.clock()
 
@@ -133,7 +387,7 @@ function Scheduler:runSystem(system, justInitialized)
 
 	if justInitialized ~= true then
 		if self:_canRun(system) == false then
-			hooks.systemTriedRun(self, systemInfo)
+			self:_systemTriedRun(systemInfo)
 			return
 		end
 
@@ -156,37 +410,47 @@ function Scheduler:runSystem(system, justInitialized)
 		coroutine.resume(self._thread)
 	end
 
+	-- selene: allow(incorrect_standard_library_use)
+	assert(self._thread)
+
 	local didYield = false
 	local hasSystem = false
 
 	local function systemCall()
 		local function noYield()
 			local success, errOrSys, cleanup
+
 			coroutine.resume(self._thread, function()
 				success, errOrSys, cleanup = xpcall(function()
 					return systemInfo.run(table.unpack(self._vargs))
-				end, function(e)
+				end, function(e: string)
 					return debug.traceback(e)
 				end)
 			end)
 
 			if success == false then
 				didYield = true
+
+				-- selene: allow(incorrect_standard_library_use)
+				assert(errOrSys)
 				table.insert(systemInfo.logs, errOrSys)
-				hooks.systemError(self, systemInfo, errOrSys)
+				self:_systemError(systemInfo, errOrSys)
+
 				return
 			end
 
 			if self._yielded then
 				didYield = true
+
 				local source, line = debug.info(self._thread, 1, "sl")
 				local errMessage = `{source}:{line}: System yielded`
+
 				table.insert(
 					systemInfo.logs,
 					debug.traceback(self._thread, errMessage, 2)
 				)
-				hooks.systemError(
-					self,
+
+				self:_systemError(
 					systemInfo,
 					debug.traceback(self._thread, errMessage, 2)
 				)
@@ -228,29 +492,24 @@ function Scheduler:runSystem(system, justInitialized)
 					end
 				end
 
-				local err = string.format(
-					"System '%s' initializer returned invalid type. "
-						.. "Expected: function, {system?, cleanup?}, or (function, function). "
-						.. "Got: %s, %s",
-					systemInfo.name,
-					type(errOrSys),
-					type(cleanup)
-				)
+				local err = `System '{systemInfo.name}' initializer returned invalid type. `
+					.. "Expected: function, {system?, cleanup?}, or (function, function). "
+					.. `Got: {typeof(errOrSys)}, {typeof(cleanup)}`
 				table.insert(systemInfo.logs, err)
-				hooks.systemError(self, systemInfo, err)
+				self:_systemError(systemInfo, err)
 				systemInfo.initialized = true
 			end
 		end
 
-		hooks.systemCall(self, "SystemCall", systemInfo, noYield)
+		self:_systemCall("SystemCall", systemInfo, noYield)
 	end
 
 	local function inner()
-		hooks.systemCall(self, "InnerSystemCall", systemInfo, systemCall)
+		self:_systemCall("InnerSystemCall", systemInfo, systemCall)
 	end
 
 	local function outer()
-		hooks.systemCall(self, "OuterSystemCall", systemInfo, inner)
+		self:_systemCall("OuterSystemCall", systemInfo, inner)
 	end
 
 	if os.clock() - timeLastLogged > 10 then
@@ -258,14 +517,15 @@ function Scheduler:runSystem(system, justInitialized)
 		recentLogs = {}
 	end
 
-	local success, err: string? = pcall(outer)
+	-- LUAU FUTURE: Better types for pcalls
+	local success, err: string? = pcall(outer :: any)
 	if not success and not recentLogs[err] then
-		task.spawn(error, err, 0)
+		-- LUAU FUTURE: Inference bug
+		task.spawn<<(string?, number)>>(error, err, 0)
 		warn(
 			`Planck: Error occurred while running hooks, this error will be ignored for 10 seconds`
 		)
-		hooks.systemError(
-			self,
+		self:_systemError(
 			systemInfo,
 			`Error occurred while running hooks: {err}`
 		)
@@ -295,23 +555,23 @@ function Scheduler:runSystem(system, justInitialized)
 	end
 end
 
-function Scheduler:runPhase(phase)
+function Scheduler.runPhase<U...>(self: Scheduler<U...>, phase: Phase)
 	if self:_canRun(phase) == false then
 		return
 	end
 
-	hooks.phaseBegan(self, phase)
+	self:_phaseBegan(phase)
 
 	if not self._phaseToSystems[phase] then
 		self._phaseToSystems[phase] = {}
 	end
 
 	for _, system in self._phaseToSystems[phase] do
-		self:runSystem(system)
+		self:runSystem(system, false)
 	end
 end
 
-function Scheduler:runPipeline(pipeline)
+function Scheduler.runPipeline<U...>(self: Scheduler<U...>, pipeline: Pipeline)
 	if self:_canRun(pipeline) == false then
 		return
 	end
@@ -327,11 +587,11 @@ function Scheduler:runPipeline(pipeline)
 	end
 end
 
-function Scheduler:_canRun(dependent)
-	local conditions = self._runIfConditions[dependent]
+function Scheduler._canRun<U...>(self: Scheduler<U...>, dependent: Dependent<U...>)
+	local runConditions = self._runIfConditions[dependent :: any]
 
-	if conditions then
-		for _, runIf in conditions do
+	if runConditions then
+		for _, runIf in runConditions do
 			if runIf and not runIf(table.unpack(self._vargs)) then
 				return false
 			end
@@ -361,21 +621,24 @@ end
 --- @return Scheduler
 ---
 --- Runs the System, passing in the arguments of the Scheduler, `U...`.
-function Scheduler:run(dependent)
-	if not dependent then
-		error("No dependent specified in Scheduler:run(_)")
-	end
+function Scheduler.run<U...>(self: Scheduler<U...>, dependent: Dependent<U...>)
+	assert(
+		dependent ~= nil,
+		"No dependent specified in Scheduler.run<U...>(self: Scheduler<U...>, _)"
+	)
 
 	self:runPipeline(Pipeline.Startup)
 
-	if getSystem(dependent) then
-		self:runSystem(dependent)
+	if isSystem(dependent) then
+		self:runSystem(dependent :: any, false)
 	elseif isPhase(dependent) then
-		self:runPhase(dependent)
+		self:runPhase(dependent :: any)
 	elseif isPipeline(dependent) then
-		self:runPipeline(dependent)
+		self:runPipeline(dependent :: any)
 	else
-		error("Unknown dependent passed into Scheduler:run(unknown)")
+		error(
+			"Unknown dependent passed into Scheduler.run<U...>(self: Scheduler<U...>, unknown)"
+		)
 	end
 
 	return self
@@ -399,7 +662,7 @@ end
 --- Pipelines/Phases in these groups are still ordered by their dependencies
 --- and by the order of insertion.
 --- :::
-function Scheduler:runAll()
+function Scheduler.runAll<U...>(self: Scheduler<U...>)
 	local orderedDefaults = self._defaultDependencyGraph:getOrderedList()
 	assert(
 		orderedDefaults,
@@ -413,9 +676,10 @@ function Scheduler:runAll()
 	for identifier, dependencyGraph in self._eventDependencyGraphs do
 		local orderedList = dependencyGraph:getOrderedList()
 		assert(
-			orderedDefaults,
+			orderedList,
 			`Event Group '{identifier}' contains a circular dependency, check your Pipelines/Phases`
 		)
+
 		for _, dependency in orderedList do
 			self:run(dependency)
 		end
@@ -423,6 +687,52 @@ function Scheduler:runAll()
 
 	return self
 end
+
+type InsertFn =
+	& (<U...>(
+		self: Scheduler<U...>,
+		dependency: Phase | Pipeline
+	) -> Scheduler<U...>)
+	-- RBXScriptSignal & nil
+	& (<U...>(
+		self: Scheduler<U...>,
+		dependency: Phase | Pipeline,
+		signal: RBXScriptSignal<U...>
+	) -> Scheduler<U...>)
+	-- Instance & RBXScriptSignal
+	-- Instance & string
+	& (<U...>(
+		self: Scheduler<U...>,
+		dependency: Phase | Pipeline,
+		instance: Instance,
+		event: RBXScriptSignal<U...> | string
+	) -> Scheduler<U...>)
+	-- SignalLike & nil
+	& (<U...>(
+		self: Scheduler<U...>,
+		dependency: Phase | Pipeline,
+		signal: SignalLike<U...>
+	) -> Scheduler<U...>)
+	-- table & string
+	& (<U...>(
+		self: Scheduler<U...>,
+		dependency: Phase | Pipeline,
+		table: GenericTable,
+		event: string
+	) -> Scheduler<U...>)
+	-- table & connectable method
+	& (<T, U...>(
+		self: Scheduler<U...>,
+		dependency: Phase | Pipeline,
+		instance: GenericTable,
+		connectMethod: (GenericTable, Callback<U...>, ...any) -> T
+	) -> Scheduler<U...>)
+	-- connectable function
+	& (<T, U...>(
+		self: Scheduler<U...>,
+		dependency: Phase | Pipeline,
+		connectFn: (Callback<U...>, ...any) -> T
+	) -> Scheduler<U...>)
 
 --- @method insert
 --- @within Scheduler
@@ -473,10 +783,15 @@ end
 --- local myScheduler = Scheduler.new()
 ---     :insert(myPipeline, RunService, "Heartbeat")
 --- ```
-function Scheduler:insert(dependency, instance, event)
+local insertFn: InsertFn = function<U...>(
+	self: Scheduler<U...>,
+	dependency: Phase | Pipeline,
+	instance: any,
+	event: any
+): Scheduler<U...>
 	assert(
 		isPhase(dependency) or isPipeline(dependency),
-		"Unknown dependency passed to Scheduler:insert(unknown, _, _)"
+		"Unknown dependency passed to Scheduler.insert<U...>(self: Scheduler<U...>, unknown, _, _)"
 	)
 
 	if not instance then
@@ -485,7 +800,7 @@ function Scheduler:insert(dependency, instance, event)
 	else
 		assert(
 			isValidEvent(instance, event),
-			"Unknown instance/event passed to Scheduler:insert(_, instance, event)"
+			"Unknown instance/event passed to Scheduler.insert<U...>(self: Scheduler<U...>, _, instance, event)"
 		)
 
 		local dependencyGraph = self:_getEventDependencyGraph(instance, event)
@@ -493,12 +808,14 @@ function Scheduler:insert(dependency, instance, event)
 	end
 
 	if isPhase(dependency) then
-		self._phaseToSystems[dependency] = {}
-		hooks.phaseAdd(self, dependency)
+		self._phaseToSystems[dependency :: Phase] = {}
+		self:_phaseAdd(dependency :: Phase)
 	end
 
 	return self
 end
+
+Scheduler.insert = insertFn
 
 --- @method insertAfter
 --- @within Scheduler
@@ -518,22 +835,26 @@ end
 --- Initializes the Pipeline and it's Phases within the Scheduler,
 --- ordering the Pipeline explicitly by setting the after Phase/Pipeline
 --- as a dependent.
-function Scheduler:insertAfter(dependent, after)
+function Scheduler.insertAfter<U...>(
+	self: Scheduler<U...>,
+	dependent: Dependency,
+	after: Dependency
+)
 	assert(
 		isPhase(after) or isPipeline(after),
-		"Unknown dependency passed in Scheduler:insertAfter(_, unknown)"
+		"Unknown dependency passed in Scheduler.insertAfter<U...>(self: Scheduler<U...>, _, unknown)"
 	)
 	assert(
 		isPhase(dependent) or isPipeline(dependent),
-		"Unknown dependent passed in Scheduler:insertAfter(unknown, _)"
+		"Unknown dependent passed in Scheduler.insertAfter<U...>(self: Scheduler<U...>, unknown, _)"
 	)
 
 	local dependencyGraph = self:_getGraphOfDependency(after)
 	dependencyGraph:insertAfter(dependent, after)
 
 	if isPhase(dependent) then
-		self._phaseToSystems[dependent] = {}
-		hooks.phaseAdd(self, dependent)
+		self._phaseToSystems[dependent :: Phase] = {}
+		self:_phaseAdd(dependent :: Phase)
 	end
 
 	return self
@@ -557,22 +878,26 @@ end
 --- Initializes the Pipeline and it's Phases within the Scheduler,
 --- ordering the Pipeline explicitly by setting the before Phase/Pipeline
 --- as a dependency.
-function Scheduler:insertBefore(dependent, before)
+function Scheduler.insertBefore<U...>(
+	self: Scheduler<U...>,
+	dependent: Dependency,
+	before: Dependency
+)
 	assert(
 		isPhase(before) or isPipeline(before),
-		"Unknown dependency passed in Scheduler:insertBefore(_, unknown)"
+		"Unknown dependency passed in Scheduler.insertBefore<U...>(self: Scheduler<U...>, _, unknown)"
 	)
 	assert(
 		isPhase(dependent) or isPipeline(dependent),
-		"Unknown dependent passed in Scheduler:insertBefore(unknown, _)"
+		"Unknown dependent passed in Scheduler.insertBefore<U...>(self: Scheduler<U...>, unknown, _)"
 	)
 
 	local dependencyGraph = self:_getGraphOfDependency(before)
 	dependencyGraph:insertBefore(dependent, before)
 
 	if isPhase(dependent) then
-		self._phaseToSystems[dependent] = {}
-		hooks.phaseAdd(self, dependent)
+		self._phaseToSystems[dependent :: Phase] = {}
+		self:_phaseAdd(dependent :: Phase)
 	end
 
 	return self
@@ -606,11 +931,17 @@ end
 ---     end
 --- end
 --- ```
-function Scheduler:addSystem(system, phase)
+function Scheduler.addSystem<U...>(
+	self: Scheduler<U...>,
+	system: System<U...>,
+	phase: Phase?
+)
 	local systemFn = getSystem(system)
 
 	if not systemFn then
-		error("Unknown system passed to Scheduler:addSystem(unknown, phase?)")
+		error(
+			"Unknown system passed to Scheduler.addSystem<U...>(self: Scheduler<U...>, unknown, phase?)"
+		)
 	end
 
 	local name = getSystemName(system)
@@ -624,7 +955,7 @@ function Scheduler:addSystem(system, phase)
 		scheduledPhase = self._defaultPhase
 	end
 
-	local systemInfo = {
+	local systemInfo: SystemInfo<U...> = {
 		system = systemFn,
 		run = systemFn,
 		cleanup = nil,
@@ -634,15 +965,18 @@ function Scheduler:addSystem(system, phase)
 		initialized = false,
 	}
 
-	self._systemInfo[systemFn] = systemInfo
+	self._systemInfo[systemFn] = systemInfo :: any
 
 	if not self._phaseToSystems[systemInfo.phase] then
 		self._phaseToSystems[systemInfo.phase] = {}
 	end
 
-	table.insert(self._phaseToSystems[systemInfo.phase], systemFn)
+	table.insert(
+		self._phaseToSystems[systemInfo.phase],
+		systemFn :: System<...any>
+	)
 
-	hooks.systemAdd(self, systemInfo)
+	self:_systemAdd(systemInfo)
 
 	if type(system) == "table" and system.runConditions then
 		for _, condition in system.runConditions do
@@ -663,9 +997,15 @@ end
 ---
 --- Adds the Systems to the Scheduler, scheduling them to be ran
 --- implicitly within the provided Phase or on the default Main phase.
-function Scheduler:addSystems(systems, phase)
+function Scheduler.addSystems<U...>(
+	self: Scheduler<U...>,
+	systems: { System<U...> },
+	phase: Phase?
+)
 	if type(systems) ~= "table" then
-		error("Unknown systems passed to Scheduler:addSystems(unknown, phase?)")
+		error(
+			"Unknown systems passed to Scheduler.addSystems<U...>(self: Scheduler<U...>, unknown, phase?)"
+		)
 	end
 
 	local foundSystem = false
@@ -680,12 +1020,14 @@ function Scheduler:addSystems(systems, phase)
 	end
 
 	if n == 0 then
-		error("Empty table passed to Scheduler:addSystems({ }, phase?)")
+		error(
+			"Empty table passed to Scheduler.addSystems<U...>(self: Scheduler<U...>, { }, phase?)"
+		)
 	end
 
 	if not foundSystem then
 		error(
-			"Unknown table passed to Scheduler:addSystems({ unknown }, phase?)"
+			"Unknown table passed to Scheduler.addSystems<U...>(self: Scheduler<U...>, { unknown }, phase?)"
 		)
 	end
 
@@ -698,22 +1040,26 @@ end
 --- @param newPhase Phase
 ---
 --- Changes the Phase that this system is scheduled on.
-function Scheduler:editSystem(system, newPhase)
+function Scheduler.editSystem<U...>(
+	self: Scheduler<U...>,
+	system: System<U...>,
+	newPhase: Phase
+)
 	local systemFn = getSystem(system)
 	local systemInfo = self._systemInfo[systemFn]
 	assert(
 		systemInfo,
-		"Attempt to edit a non-existent system in Scheduler:editSystem(_)"
+		"Attempt to edit a non-existent system in Scheduler.editSystem<U...>(self: Scheduler<U...>, _)"
 	)
 
 	assert(
 		newPhase and self._phaseToSystems[newPhase] ~= nil or true,
-		"Phase never initialized before using Scheduler:editSystem(_, Phase)"
+		"Phase never initialized before using Scheduler.editSystem<U...>(self: Scheduler<U...>, _, Phase)"
 	)
 
 	local systems = self._phaseToSystems[systemInfo.phase]
 
-	local index = table.find(systems, systemFn)
+	local index = table.find(systems, systemFn :: System<...any>)
 	assert(index, "Unable to find system within phase")
 
 	table.remove(systems, index)
@@ -721,17 +1067,21 @@ function Scheduler:editSystem(system, newPhase)
 	if not self._phaseToSystems[newPhase] then
 		self._phaseToSystems[newPhase] = {}
 	end
-	table.insert(self._phaseToSystems[newPhase], systemFn)
+	table.insert(self._phaseToSystems[newPhase], systemFn :: System<...any>)
 
 	systemInfo.phase = newPhase
 	return self
 end
 
-function Scheduler:_removeCondition(dependent, condition)
-	self._runIfConditions[dependent] = nil
+function Scheduler._removeCondition<U...>(
+	self: Scheduler<U...>,
+	dependent: Dependent<U...>,
+	condition: Condition<U...>
+)
+	self._runIfConditions[dependent :: any] = nil
 
 	for _, _conditions in self._runIfConditions do
-		if table.find(_conditions, condition) then
+		if table.find(_conditions :: any, condition) then
 			return
 		end
 	end
@@ -768,47 +1118,51 @@ end
 --- -- Later...
 --- scheduler:removeSystem(networkSystem) -- Cleanup executes here
 --- ```
-function Scheduler:removeSystem(system)
+function Scheduler.removeSystem<U...>(self: Scheduler<U...>, system: System<U...>)
 	local systemFn = getSystem(system)
 	local systemInfo = self._systemInfo[systemFn]
 	assert(
 		systemInfo,
-		"Attempt to remove a non-existent system in Scheduler:removeSystem(_)"
+		"Attempt to remove a non-existent system in Scheduler.removeSystem<U...>(self: Scheduler<U...>, _)"
 	)
 
 	if systemInfo.cleanup then
-		local success, err =
-			pcall(systemInfo.cleanup, table.unpack(self._vargs))
+		-- LUAU FUTURE: Better types for pcalls
+		local success: boolean, err: string? = (pcall :: any)(
+			systemInfo.cleanup,
+			table.unpack(self._vargs)
+		)
+
 		if success then
-			hooks.systemCleanup(self, systemInfo, nil)
+			self:_systemCleanup(systemInfo, nil)
 		else
 			local errMsg = string.format(
 				"Cleanup failed for system '%s': %s",
 				systemInfo.name,
 				tostring(err)
 			)
-			hooks.systemError(self, systemInfo, errMsg)
-			hooks.systemCleanup(self, systemInfo, errMsg)
+			self:_systemError(systemInfo, errMsg)
+			self:_systemCleanup(systemInfo, errMsg)
 		end
 	end
 
 	local systems = self._phaseToSystems[systemInfo.phase]
 
-	local index = table.find(systems, systemFn)
+	local index = table.find(systems :: any, systemFn)
 	assert(index, "Unable to find system within phase")
 
 	table.remove(systems, index)
 	self._systemInfo[systemFn] = nil
 
-	if self._runIfConditions[system] then
-		for _, condition in self._runIfConditions[system] do
+	if self._runIfConditions[system :: any] then
+		for _, condition in self._runIfConditions[system :: any] do
 			self:_removeCondition(system, condition)
 		end
 
-		self._runIfConditions[system] = nil
+		self._runIfConditions[system :: any] = nil
 	end
 
-	hooks.systemRemove(self, systemInfo)
+	self:_systemRemove(systemInfo)
 
 	return self
 end
@@ -819,33 +1173,40 @@ end
 --- @param new System
 ---
 --- Replaces the System with a new System.
-function Scheduler:replaceSystem(old, new)
-	local oldSystemFn = getSystem(old)
+function Scheduler.replaceSystem<U...>(
+	self: Scheduler<U...>,
+	old: System<U...>,
+	new: System<U...>
+)
+	local oldSystemFn: SystemFn<...any> = getSystem(old) :: any
 	local oldSystemInfo = self._systemInfo[oldSystemFn]
 	assert(
 		oldSystemInfo,
-		"Attempt to replace a non-existent system in Scheduler:replaceSystem(unknown, _)"
+		"Attempt to replace a non-existent system in Scheduler.replaceSystem<U...>(self: Scheduler<U...>, unknown, _)"
 	)
 
-	local newSystemFn = getSystem(new)
+	local newSystemFn: SystemFn<...any> = getSystem(new) :: any
 	assert(
 		newSystemFn,
-		"Attempt to pass non-system in Scheduler:replaceSystem(_, unknown)"
+		"Attempt to pass non-system in Scheduler.replaceSystem<U...>(self: Scheduler<U...>, _, unknown)"
 	)
 
 	if oldSystemInfo.cleanup then
-		local success, err =
-			pcall(oldSystemInfo.cleanup, table.unpack(self._vargs))
+		-- LUAU FUTURE: Better types for pcalls
+		local success: boolean, err: string? = (pcall :: any)(
+			oldSystemInfo.cleanup,
+			table.unpack(self._vargs)
+		)
 		if success then
-			hooks.systemCleanup(self, oldSystemInfo, nil)
+			self:_systemCleanup(oldSystemInfo, nil)
 		else
 			local errMsg = string.format(
 				"Cleanup failed for system '%s': %s",
 				oldSystemInfo.name,
 				tostring(err)
 			)
-			hooks.systemError(self, oldSystemInfo, errMsg)
-			hooks.systemCleanup(self, oldSystemInfo, errMsg)
+			self:_systemError(oldSystemInfo, errMsg)
+			self:_systemCleanup(oldSystemInfo, errMsg)
 		end
 	end
 
@@ -865,7 +1226,7 @@ function Scheduler:replaceSystem(old, new)
 	oldSystemInfo.initialized = false
 	oldSystemInfo.name = getSystemName(new)
 
-	hooks.systemReplace(self, copy, oldSystemInfo)
+	self:_systemReplace(copy, oldSystemInfo)
 
 	self._systemInfo[newSystemFn] = self._systemInfo[oldSystemFn]
 	self._systemInfo[oldSystemFn] = nil
@@ -896,43 +1257,34 @@ end
 ---
 --- Adds a Run Condition which the Scheduler will check before
 --- any Systems within any Phases apart of this Pipeline are ran.
-function Scheduler:addRunCondition(dependent, fn)
+function Scheduler.addRunCondition<U...>(
+	self: Scheduler<U...>,
+	dependent: Dependent<U...>,
+	fn: Condition<U...>
+)
 	fn = if typeof(fn) == "table" then fn[1] else fn
 
-	local system = getSystem(dependent)
+	local system: SystemFn<...any>? = getSystem(dependent :: any) :: any
 	if system then
 		dependent = system
 	end
 
 	assert(
 		system or isPhase(dependent) or isPipeline(dependent),
-		"Attempt to pass unknown dependent into Scheduler:addRunCondition(unknown, _)"
+		"Attempt to pass unknown dependent into Scheduler.addRunCondition<U...>(self: Scheduler<U...>, unknown, _)"
 	)
 
-	if not self._runIfConditions[dependent] then
-		self._runIfConditions[dependent] = {}
+	if not self._runIfConditions[dependent :: any] then
+		self._runIfConditions[dependent :: any] = {}
 	end
 
-	table.insert(self._runIfConditions[dependent], fn)
+	table.insert(self._runIfConditions[dependent :: any], fn)
 
 	return self
 end
 
-function Scheduler:_addBuiltins()
-	self._defaultPhase = Phase.new("Default")
-	self._defaultDependencyGraph = DependencyGraph.new()
-
-	self._defaultDependencyGraph:insert(Pipeline.Startup)
-	self._defaultDependencyGraph:insert(self._defaultPhase)
-
-	self:addRunCondition(Pipeline.Startup, conditions.runOnce())
-	for _, phase in Pipeline.Startup.dependencyGraph.nodes do
-		self:addRunCondition(phase, conditions.runOnce())
-	end
-end
-
-function Scheduler:_scheduleEvent(instance, event)
-	local connect = utils.getConnectFunction(instance, event)
+function Scheduler._scheduleEvent<U...>(self: Scheduler<U...>, instance, event)
+	local connect = utils.getConnectFn(instance, event)
 	assert(
 		connect,
 		"Couldn't connect to event as no valid connect methods were found! Ensure the passed event has a 'Connect' or an 'on' method!"
@@ -949,24 +1301,32 @@ function Scheduler:_scheduleEvent(instance, event)
 			local err =
 				`Event Group '{identifier}' contains a circular dependency, check your Pipelines/Phases`
 			if not recentLogs[err] then
-				task.spawn(error, err, 0)
+				-- LUAU FUTURE: Inference bug
+				task.spawn<<(string, number?)>>(error, err, 0)
 				warn(
 					`Planck: Error occurred while running event, this error will be ignored for 10 seconds`
 				)
 				recentLogs[err] = true
 			end
+
+			return
 		end
 
 		for _, dependency in orderedList do
-			self:run(dependency)
+			self:run(dependency :: any)
 		end
 	end
 
 	self._connectedEvents[identifier] = connect(callback)
-	self._eventDependencyGraphs[identifier] = dependencyGraph
+	self._eventDependencyGraphs[identifier] =
+		dependencyGraph :: DependencyGraph<Dependency>
 end
 
-function Scheduler:_getEventDependencyGraph(instance, event)
+function Scheduler._getEventDependencyGraph<U...>(
+	self: Scheduler<U...>,
+	instance,
+	event
+)
 	local identifier = getEventIdentifier(instance, event)
 
 	if not self._connectedEvents[identifier] then
@@ -976,7 +1336,10 @@ function Scheduler:_getEventDependencyGraph(instance, event)
 	return self._eventDependencyGraphs[identifier]
 end
 
-function Scheduler:_getGraphOfDependency(dependency)
+function Scheduler._getGraphOfDependency<U...>(
+	self: Scheduler<U...>,
+	dependency: Dependency
+)
 	if table.find(self._defaultDependencyGraph.nodes, dependency) then
 		return self._defaultDependencyGraph
 	end
@@ -1009,7 +1372,7 @@ end
 --- These plugins are unable to properly be cleaned up, use
 --- them with caution.
 --- :::
-function Scheduler:cleanup()
+function Scheduler.cleanup<U...>(self: Scheduler<U...>)
 	for _, connection in self._connectedEvents do
 		utils.disconnectEvent(connection)
 	end
@@ -1037,34 +1400,64 @@ end
 ---
 --- Creates a new Scheduler, the args passed will be passed to
 --- any System anytime it is ran by the Scheduler.
-function Scheduler.new(...)
-	local self = {}
+function Scheduler.new<U...>(...: U...): Scheduler<U...>
+	local defaultPhase = Phase.new("Default")
+	local defaultDependencyGraph: DependencyGraph<Dependency> =
+		DependencyGraph.new() :: any
 
-	self._hooks = {}
+	defaultDependencyGraph:insert(Pipeline.Startup)
+	defaultDependencyGraph:insert(defaultPhase)
 
-	self._vargs = { ... }
+	local self: Scheduler<U...> = setmetatable({
+		_defaultPhase = defaultPhase,
+		_defaultDependencyGraph = defaultDependencyGraph,
+		_eventDependencyGraphs = {},
+		_connectedEvents = {},
+		_plugins = {},
+		_phaseToSystems = {},
+		_hooks = {},
+		_runIfConditions = {},
+		_systemInfo = {},
+		_thread = nil :: any,
+		_currentSystem = nil :: any,
+		_yielded = false,
+		_vargs = { ... },
+	}, Scheduler)
 
-	self._eventDependencyGraphs = {}
-	self._connectedEvents = {}
-
-	self._phaseToSystems = {}
-	self._systemInfo = {}
-
-	self._runIfConditions = {}
-
-	self._plugins = {}
-
-	setmetatable(self, Scheduler)
-
-	for _, hookName in hooks.Hooks do
+	for _, hookName in self.Hooks :: any do
 		if not self._hooks[hookName] then
 			self._hooks[hookName] = {}
 		end
 	end
 
-	self:_addBuiltins()
+	self:addRunCondition(Pipeline.Startup, conditions.runOnce())
+	for _, phase in Pipeline.Startup.dependencyGraph.nodes do
+		self:addRunCondition(phase, conditions.runOnce())
+	end
 
-	return self
+	return self :: Scheduler<U...>
 end
+
+export type Scheduler<U...> = setmetatable<
+	{
+		_defaultPhase: Phase,
+		_defaultDependencyGraph: DependencyGraph<Dependency>,
+		_eventDependencyGraphs: { [string]: DependencyGraph<Dependency> },
+		_connectedEvents: { [string]: utils.ConnectionLike },
+		_plugins: Vec<Plugin>,
+		-- LUAU FIXME: Should be System<U...>
+		_phaseToSystems: Map<Phase, Vec<System<...any>>>,
+		_hooks: Map<HookId, Vec<(PartialHookContext) -> unknown>>,
+		-- LUAU FIXME: Should be <Dependent<U...>, Condition<U...>>
+		_runIfConditions: Map<Dependent<...any>, Vec<Condition<...any>>>,
+		-- LUAU FIXME: Should be SystemInfo<U...>
+		_systemInfo: Map<unknown, SystemInfo<...any>>,
+		_currentSystem: SystemInfo<...any>,
+		_thread: thread?,
+		_yielded: boolean,
+		_vargs: { any },
+	},
+	typeof(Scheduler)
+>
 
 return Scheduler

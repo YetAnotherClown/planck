@@ -1,5 +1,6 @@
 {
   "editor.formatOnSave": true,
+  "luau-lsp.fflags.enableNewSolver": true,
   "luau-lsp.completion.imports.enabled": true,
   "luau-lsp.completion.imports.suggestServices": true,
   "luau-lsp.completion.imports.suggestRequires": false,

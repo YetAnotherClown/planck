@@ -21,7 +21,10 @@ local function cleanup()
 
 	for baseKey, state in pairs(currentFrame.node.system) do
 		for key, value in pairs(state.storage) do
-			if not currentFrame.accessedKeys[baseKey] or not currentFrame.accessedKeys[baseKey][key] then
+			if
+				not currentFrame.accessedKeys[baseKey]
+				or not currentFrame.accessedKeys[baseKey][key]
+			then
 				local cleanupCallback = state.cleanupCallback
 
 				if cleanupCallback then
@@ -138,7 +141,10 @@ local function useHookState(discriminator, cleanupCallback): {}
 	local currentFrame = stack[#stack]
 
 	if currentFrame == nil then
-		error("Attempt to access topologically-aware storage outside of a Loop-system context.", 3)
+		error(
+			"Attempt to access topologically-aware storage outside of a Loop-system context.",
+			3
+		)
 	end
 
 	if not currentFrame.accessedKeys[baseKey] then

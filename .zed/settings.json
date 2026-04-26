@@ -6,6 +6,13 @@
           "roblox": {
             "enabled": true,
             "security_level": "roblox_script"
+          },
+          "fflags": {
+            "enable_new_solver": true,
+            "override": {
+            	"LuauExplicitTypeInstantiationSyntax": "true",
+              "LuauExplicitTypeInstantiationSupport": "true"
+            }
           }
         }
       }
