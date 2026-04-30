@@ -15,6 +15,14 @@ export type InitializerSystemFn<U...> = Scheduler.InitializerSystemFn<U...>
 export type InitializerResult<U...> = Scheduler.InitializerResult<U...>
 export type CleanupFn<U...> = SystemFn<U...>
 
+export type SystemInfo<U...> = Scheduler.SystemInfo<U...>
+
+export type SystemHookContext = Scheduler.SystemHookContext
+export type SystemReplaceContext = Scheduler.SystemReplaceContext
+export type SystemErrorContext = Scheduler.SystemErrorContext
+export type SystemCallContext = Scheduler.SystemCallContext
+export type PhaseContext = Scheduler.PhaseContext
+
 return {
 	Phase = Phase,
 	Pipeline = Pipeline,

@@ -76,7 +76,7 @@ end
 --- Creates a new Pipeline, with an optional name to use for debugging.
 --- When no name is provided, the script and line number will be used.
 function Pipeline.new(name: string?): Pipeline
-	name = name or debug.info(2, "sl")
+	name = name or debug.info(2, "sl") :: string
 
 	local dependencyGraph: DependencyGraph<Phase> = DependencyGraph.new()
 

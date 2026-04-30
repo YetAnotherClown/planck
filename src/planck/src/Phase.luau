@@ -14,7 +14,7 @@ end
 --- Creates a new Phase, with an optional name to use for debugging.
 --- When no name is provided, the script and line number will be used.
 function Phase.new(name: string?): Phase
-	name = name or debug.info(2, "sl")
+	name = name or debug.info(2, "sl") :: string
 	return setmetatable({
 		_name = name,
 		_type = "phase",
