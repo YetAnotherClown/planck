@@ -1,7 +1,7 @@
 ---
 title: Matter Debugger
 description: A Plugin to add support for the Matter Debugger to Planck
-sidebar_position: 3
+sidebar_position: 4
 ---
 
 import Tabs from "@theme/Tabs";

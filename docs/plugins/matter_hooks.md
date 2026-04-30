@@ -1,7 +1,7 @@
 ---
 title: Matter Hooks
 description: A Plugin to add the Matter topoRuntime and Hooks to Planck
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 import Tabs from "@theme/Tabs";

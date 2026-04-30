@@ -39,10 +39,4 @@ See the [Jabby](/docs/plugins/jabby) page.
 
 ## Creating Plugins
 
-:::danger
-    The API behind Plugins is currently unstable.
-
-    The Plugins API will continue to be undocumented until it is stable.
-    If you want to create a Plugin, see the two provided Plugin's source code,
-    and be warned.
-:::
+See [Creating Plugins](/docs/plugins/creating).
