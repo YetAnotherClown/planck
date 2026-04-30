@@ -16,4 +16,5 @@ Jest = "jsdotlua/jest@3.6.1-rc.2"
 JestGlobals = "jsdotlua/jest-globals@3.6.1-rc.2"
 
 [dependencies]
+Planck = "yetanotherclown/planck@^0.3.0-rc.1"
 Jabby = "alicesaidhi/jabby@0.4.0"

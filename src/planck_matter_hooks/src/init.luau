@@ -1,279 +1,176 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-type SystemInfo = {
-	name: string,
-	phase: any,
-	system: (...any) -> ...any,
-}
+local Planck = require(script.Parent.Planck)
+type Scheduler<U...> = Planck.Scheduler<U...>
+type System<U...> = Planck.System<U...>
+type Phase = Planck.Phase
 
-type HookArgs = {
-	scheduler: any,
-	system: SystemInfo,
-	nextFn: (...any) -> ...any,
-}
+type PhaseContext = Planck.PhaseContext
+type SystemHookContext = Planck.SystemHookContext
+type SystemReplaceContext = Planck.SystemReplaceContext
+type SystemCallContext = Planck.SystemCallContext
 
-type PhaseBeganArgs = {
-	scheduler: any,
-	phase: any,
-}
+local log = require(script.hooks.log)
+local useDeltaTime = require(script.hooks.useDeltaTime)
+local useEvent = require(script.hooks.useEvent)
+local useThrottle = require(script.hooks.useThrottle)
 
-type SystemsAddRemove = {
-	scheduler: any,
-	system: SystemInfo,
-}
+local topoRuntime = require(script.topoRuntime)
 
-type SystemsReplace = {
-	scheduler: any,
-	new: SystemInfo,
-	old: SystemInfo,
-}
-
-type ConnectionObject = {
-	Disconnect: (() -> ())?,
-	Destroy: (() -> ())?,
-	disconnect: (() -> ())?,
-	destroy: (() -> ())?,
-} | () -> ()
-
-type CustomEvent =
-	{
-		Connect: (...any) -> ConnectionObject,
-		[any]: any,
-	}
-	| {
-		on: (...any) -> ConnectionObject,
-		[any]: any,
-	}
-	| {
-		connect: (...any) -> ConnectionObject,
-		[any]: any,
-	}
-
-local topoRuntime
-local export = {} :: any
-
-local hooks = {
-	"useDeltaTime",
-	"useEvent",
-	"useThrottle",
-	"log",
-}
-
-local function setHooks(package)
-	topoRuntime = require(package:FindFirstChild("topoRuntime", true)) :: any
-
-	for _, hook in hooks do
-		local module = package:FindFirstChild(hook, true)
-		export[hook] = require(module) :: any
-	end
-end
+type SystemState = topoRuntime.SystemState
 
 -- When using Matter, we must use the topoRuntime in the library
 if ReplicatedStorage:FindFirstChild("Packages") then
+	local library: Folder & {
+		matter: ModuleScript & {
+			hooks: Folder & {
+				log: ModuleScript,
+				useDeltaTime: ModuleScript,
+				useEvent: ModuleScript,
+				useThrottle: ModuleScript,
+			},
+			topoRuntime: ModuleScript,
+		},
+	}
+
 	for _, package in ReplicatedStorage.Packages._Index:GetChildren() do
 		if
 			string.find(package.Name, "matter%-ecs_matter@")
 			or string.find(package.Name, "evaera_matter@")
 		then
-			setHooks(package)
+			library = package :: any
 			break
 		end
 	end
+
+	if library then
+		local hooks = library["matter"]["hooks"]
+
+		log = (require)(hooks.log) :: typeof(log)
+		useDeltaTime = (require)(hooks.useDeltaTime) :: typeof(useDeltaTime)
+		useEvent = (require)(hooks.useEvent) :: typeof(useEvent)
+		useThrottle = (require)(hooks.useThrottle) :: typeof(useThrottle)
+		topoRuntime = (require)(
+				library.matter.topoRuntime
+			) :: typeof(topoRuntime)
+	end
 end
 
-if not topoRuntime then
-	setHooks(script)
+local function defaultPhaseState()
+	local currentTime = os.clock()
+
+	return {
+		currentTime = currentTime,
+		lastTime = currentTime,
+		deltaTime = 0,
+		generation = false,
+	}
 end
-
--- selene: allow(incorrect_standard_library_use)
-assert(topoRuntime)
-
-export.useHookState = topoRuntime.useHookState
 
 local Plugin = {}
 Plugin.__index = Plugin
 
-function Plugin:build(scheduler: any)
-	if not scheduler._systemState then
-		scheduler._systemState = {}
+function Plugin.build(self: Plugin, scheduler: Scheduler<...unknown>)
+	for phase in scheduler._phaseToSystems do
+		self._phaseState[phase] = defaultPhaseState()
 	end
 
-	if not scheduler._systemLogs then
-		scheduler._systemLogs = {}
-	end
-
-	local phaseDetails = {}
-
-	for phase, _ in scheduler._phaseToSystems do
-		if not phaseDetails[phase] then
-			phaseDetails[phase] = {
-				lastTime = os.clock(),
-				generation = false,
-			}
-		end
-
-		local details = phaseDetails[phase]
-
-		details.currentTime = os.clock()
-		details.deltaTime = details.currentTime - details.lastTime
-		details.lastTime = details.currentTime
-
-		details.generation = not details.generation
-	end
-
-	scheduler:_addHook(scheduler.Hooks.PhaseAdd, function(args: PhaseBeganArgs)
-		local phase = args.phase
-
-		if not phaseDetails[phase] then
-			phaseDetails[phase] = {
-				currentTime = os.clock(),
-				deltaTime = 0,
-				lastTime = os.clock(),
-				generation = false,
-			}
-		end
-
-		local details = phaseDetails[phase]
-
-		details.currentTime = os.clock()
-		details.deltaTime = details.currentTime - details.lastTime
-		details.lastTime = details.currentTime
-
-		details.generation = not details.generation
+	scheduler:addHook(scheduler.Hooks.PhaseAdd, function(context: PhaseContext)
+		local phase = context.phase
+		self._phaseState[phase] = defaultPhaseState()
 	end)
 
-	scheduler:_addHook(
-		scheduler.Hooks.PhaseBegan,
-		function(args: PhaseBeganArgs)
-			local phase = args.phase
-
-			if not phaseDetails[phase] then
-				phaseDetails[phase] = {
-					currentTime = os.clock(),
-					deltaTime = 0,
-					lastTime = os.clock(),
-					generation = false,
-				}
-			end
-
-			local details = phaseDetails[phase]
-
-			details.currentTime = os.clock()
-			details.deltaTime = details.currentTime - details.lastTime
-			details.lastTime = details.currentTime
-
-			details.generation = not details.generation
-		end
-	)
-
-	scheduler:_addHook(
+	scheduler:addHook(
 		scheduler.Hooks.SystemAdd,
-		function(info: SystemsAddRemove)
-			local systemFn = info.system.system
+		function(context: SystemHookContext)
+			local systemInfo = context.system
+			local system = systemInfo.system
 
-			if not scheduler._systemState[systemFn] then
-				scheduler._systemState[systemFn] = {}
-			end
-
-			if not scheduler._systemLogs[systemFn] then
-				scheduler._systemLogs[systemFn] = {}
-			end
+			self._systemState[system] = {}
+			self._systemLogs[system] = {}
 		end
 	)
 
-	scheduler:_addHook(
+	scheduler:addHook(
 		scheduler.Hooks.SystemRemove,
-		function(info: SystemsAddRemove)
-			local systemFn = info.system.system
+		function(context: SystemHookContext)
+			local systemInfo = context.system
+			local system = systemInfo.system
 
-			scheduler._systemState[systemFn] = nil
-			scheduler._systemLogs[systemFn] = nil
+			self._systemState[system] = nil
+			self._systemLogs[system] = nil
 		end
 	)
 
-	scheduler:_addHook(
+	scheduler:addHook(
 		scheduler.Hooks.SystemReplace,
-		function(info: SystemsReplace)
-			local newSystem = info.new.system
-			local oldSystem = info.old.system
+		function(context: SystemReplaceContext)
+			local newSystemInfo = context.new
+			local newSystem = newSystemInfo.system
+			local oldSystem = context.old.system
 
-			scheduler._systemState[newSystem] =
-				scheduler._systemState[oldSystem]
-			scheduler._systemLogs[newSystem] = scheduler._systemLogs[oldSystem]
-			scheduler._systemState[oldSystem] = nil
-			scheduler._systemLogs[oldSystem] = nil
+			self._systemState[newSystem] = self._systemState[oldSystem]
+			self._systemLogs[newSystem] = self._systemLogs[oldSystem]
+			self._systemState[oldSystem] = nil
+			self._systemLogs[oldSystem] = nil
 		end
 	)
 
-	scheduler:_addHook(scheduler.Hooks.OuterSystemCall, function(args: HookArgs)
-		local systemFn = args.system.system
-		local phase = args.system.phase
+	scheduler:addHook(
+		scheduler.Hooks.OuterSystemCall,
+		function(context: SystemCallContext)
+			local systemInfo = context.system
+			local system = systemInfo.system
+			local phase = systemInfo.phase
 
-		local details = phaseDetails[phase]
+			local phaseState = self._phaseState[phase]
+			local systemState = self._systemState[system]
+			local systemLogs = self._systemLogs[system]
 
-		return function()
-			topoRuntime.start({
-				system = scheduler._systemState[systemFn],
-				frame = {
-					generation = details.generation,
-					deltaTime = details.deltaTime,
-					logs = scheduler._systemLogs[systemFn],
-				},
-				currentSystem = systemFn,
-			}, function()
-				local thread = coroutine.create(function()
-					args.nextFn()
-				end)
-
-				local _startTime = os.clock()
-				local _success, _err = coroutine.resume(thread)
-			end)
+			return function()
+				topoRuntime.start({
+					currentSystem = system,
+					system = systemState,
+					frame = {
+						deltaTime = phaseState.deltaTime,
+						generation = phaseState.generation,
+						logs = systemLogs,
+					},
+				}, context.nextFn)
+			end
 		end
-	end)
+	)
 end
 
-function Plugin.new(module)
-	if module then
-		setHooks(module)
-	end
+function Plugin.new(): Plugin
+	local plugin = {
+		_phaseState = {},
+		_systemState = {},
+		_systemLogs = {},
+	}
 
-	return setmetatable({}, Plugin)
+	return setmetatable(plugin, Plugin)
 end
 
-export.Plugin = Plugin
-
-type SchedulerLike<U...> = {
-	addPlugin: (
-		self: SchedulerLike<U...>,
-		plugin: Plugin<U...>
-	) -> SchedulerLike<U...>,
-	new: (U...) -> SchedulerLike<U...>,
-	[any]: any,
+type PhaseState = {
+	currentTime: number,
+	lastTime: number,
+	deltaTime: number,
+	generation: boolean,
 }
 
-type Plugin<U...> = {
-	getLoop: (self: Plugin<U...>) -> {
-		[any]: any,
-	},
-	build: (self: Plugin<U...>, scheduler: SchedulerLike<U...>) -> (),
-	cleanup: ((self: Plugin<U...>) -> ())?,
-	new: (module: ModuleScript?) -> Plugin<U...>,
+type Plugin = setmetatable<{
+	_phaseState: { [Phase]: PhaseState },
+	_systemState: { [System<...unknown>]: SystemState },
+	_systemLogs: { [System<...unknown>]: { string } },
+}, typeof(Plugin)>
+
+return {
+	log = log,
+	useDeltaTime = useDeltaTime,
+	useEvent = useEvent,
+	useThrottle = useThrottle,
+	useHookState = topoRuntime.useHookState,
+
+	Plugin = Plugin,
 }
-
-type Library = {
-	useHookState: (
-		discriminator: any?,
-		cleanupCallback: ((storage: { [any]: any }) -> boolean)?
-	) -> { [any]: any },
-	useDeltaTime: () -> number,
-	useEvent: (
-		instance: Instance | { [string]: CustomEvent } | CustomEvent,
-		event: string | RBXScriptSignal | CustomEvent
-	) -> () -> (number, ...any),
-	useThrottle: (seconds: number, discriminator: any?) -> boolean,
-	log: (...any) -> (),
-
-	Plugin: Plugin<...any>,
-}
-
-return export :: Library

@@ -1,34 +1,23 @@
+local Planck = require(script.Parent.Planck)
+
+type Scheduler<U...> = Planck.Scheduler<U...>
+type SystemInfo<U...> = Planck.SystemInfo<U...>
+type SystemHookContext = Planck.SystemHookContext
+type SystemReplaceContext = Planck.SystemReplaceContext
+type SystemCallContext = Planck.SystemCallContext
+
+type InternalSystem<U...> =
+	| Planck.SystemFn<U...>
+	| Planck.InitializerSystemFn<U...>
+
 local Jabby = require(script.Parent.Jabby)
-
-type SystemInfo = {
-	name: string,
-	phase: any,
-	system: (...any) -> ...any,
-}
-
-type HookArgs = {
-	scheduler: any,
-	system: SystemInfo,
-	nextFn: (...any) -> ...any,
-}
-
-type SystemsAddRemove = {
-	scheduler: any,
-	system: SystemInfo,
-}
-
-type SystemsReplace = {
-	scheduler: any,
-	new: SystemInfo,
-	old: SystemInfo,
-}
 
 local Plugin = {}
 Plugin.__index = Plugin
 
 local n = 0
 
-function Plugin:build(scheduler: any)
+function Plugin.build(_: Plugin, scheduler: Scheduler<...unknown>)
 	n += 1
 
 	local identifier = n > 1 and ` #{n}` or ""
@@ -41,9 +30,9 @@ function Plugin:build(scheduler: any)
 
 	local STARTUP_PHASES = { "PreStartup", "Startup", "PostStartup" }
 
-	local function addSystem(
-		systemFn: (...any) -> ...any,
-		systemInfo: { name: string, phase: any }
+	local function addSystem<U...>(
+		systemFn: InternalSystem<U...>,
+		systemInfo: SystemInfo<U...>
 	)
 		local phase = tostring(systemInfo.phase)
 		if table.find(STARTUP_PHASES, phase) then
@@ -51,8 +40,9 @@ function Plugin:build(scheduler: any)
 				name = systemInfo.name,
 				phase = phase,
 			})
+
 			startupScheduler:set_system_data(id, {
-				paused = true
+				paused = true,
 			})
 			systemToId[systemFn] = id
 		else
@@ -60,8 +50,9 @@ function Plugin:build(scheduler: any)
 				name = systemInfo.name,
 				phase = phase,
 			})
+
 			jabbyScheduler:set_system_data(id, {
-				paused = true
+				paused = true,
 			})
 			systemToId[systemFn] = id
 		end
@@ -71,79 +62,92 @@ function Plugin:build(scheduler: any)
 		addSystem(systemFn, systemInfo)
 	end
 
-	scheduler:_addHook(
+	scheduler:addHook(
 		scheduler.Hooks.SystemAdd,
-		function(info: SystemsAddRemove)
-			addSystem(info.system.system, info.system)
+		function(context: SystemHookContext)
+			local systemInfo = context.system
+			addSystem(systemInfo.system, systemInfo)
 		end
 	)
 
-	scheduler:_addHook(
+	scheduler:addHook(
 		scheduler.Hooks.SystemRemove,
-		function(info: SystemsAddRemove)
-			jabbyScheduler:remove_system(systemToId[info.system.system])
-			systemToId[info.system.system] = nil
+		function(context: SystemHookContext)
+			local systemInfo = context.system
+			local system = systemInfo.system
+			jabbyScheduler:remove_system(systemToId[system])
+			systemToId[system] = nil
 		end
 	)
 
-	scheduler:_addHook(
+	scheduler:addHook(
 		scheduler.Hooks.SystemReplace,
-		function(info: SystemsReplace)
-			local newSystem = info.new.system
-			local oldSystem = info.old.system
+		function(context: SystemReplaceContext)
+			local newSystemInfo = context.new
+			local newSystem = newSystemInfo.system
+			local oldSystem = context.old.system
 
 			jabbyScheduler:remove_system(systemToId[oldSystem])
 			systemToId[oldSystem] = nil
 
 			local id = jabbyScheduler:register_system({
-				name = info.new.name,
-				phase = tostring(info.new.phase),
+				name = newSystemInfo.name,
+				phase = tostring(newSystemInfo.phase),
 			})
 
 			systemToId[newSystem] = id
 		end
 	)
 
-	scheduler:_addHook(
+	scheduler:addHook(
 		scheduler.Hooks.SystemTriedRun,
-		function(info: SystemsAddRemove)
-			local id = systemToId[info.system.system]
-			local phase = tostring(info.system.phase)
+		function(context: SystemHookContext)
+			local systemInfo = context.system
+			local system = systemInfo.system
+
+			local id = systemToId[system]
+			local phase = tostring(systemInfo.phase)
 
 			if table.find(STARTUP_PHASES, phase) then
 				startupScheduler:set_system_data(id, {
-					paused = true
+					paused = true,
 				})
 			else
 				jabbyScheduler:set_system_data(id, {
-					paused = true
+					paused = true,
 				})
 			end
 		end
 	)
 
-	scheduler:_addHook(scheduler.Hooks.SystemCall, function(args: HookArgs)
-		local id = systemToId[args.system.system]
+	scheduler:addHook(
+		scheduler.Hooks.SystemCall,
+		function(context: SystemCallContext)
+			local systemInfo = context.system
+			local system = systemInfo.system
 
-		return function()
-			local phase = tostring(args.system.phase)
-			if table.find(STARTUP_PHASES, phase) then
-				startupScheduler:set_system_data(id, {
-					paused = false
-				})
-				startupScheduler:run(id, function()
-					args.nextFn()
-				end)
-			else
-			jabbyScheduler:set_system_data(id, {
-				paused = false
-			})
-				jabbyScheduler:run(id, function()
-					args.nextFn()
-				end)
+			local id = systemToId[system]
+
+			return function()
+				local phase = tostring(systemInfo.phase)
+				if table.find(STARTUP_PHASES, phase) then
+					startupScheduler:set_system_data(id, {
+						paused = false,
+					})
+					startupScheduler:run(id, function()
+						context.nextFn()
+					end)
+				else
+					jabbyScheduler:set_system_data(id, {
+						paused = false,
+					})
+					jabbyScheduler:run(id, function()
+						context.nextFn()
+					end)
+				end
 			end
 		end
-	end)
+	)
 
 	Jabby.register({
 		applet = Jabby.applets.scheduler,
@@ -162,23 +166,11 @@ function Plugin:build(scheduler: any)
 	})
 end
 
-function Plugin.new()
-	return setmetatable({}, Plugin)
+function Plugin.new(): Plugin
+	local plugin = {}
+	return setmetatable(plugin, Plugin)
 end
 
-type SchedulerLike<U...> = {
-	addPlugin: (
-		self: SchedulerLike<U...>,
-		plugin: Plugin<U...>
-	) -> SchedulerLike<U...>,
-	new: (U...) -> SchedulerLike<U...>,
-	[any]: any,
-}
+type Plugin = setmetatable<{}, typeof(Plugin)>
 
-type Plugin<U...> = {
-	build: (self: Plugin<U...>, scheduler: SchedulerLike<U...>) -> (),
-	cleanup: ((self: Plugin<U...>) -> ())?,
-	new: () -> Plugin<U...>,
-}
-
-return (Plugin :: any) :: Plugin<...any>
+return Plugin

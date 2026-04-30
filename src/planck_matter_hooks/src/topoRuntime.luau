@@ -1,15 +1,52 @@
---!nonstrict
-
--- This file is sourced from Matter by evaera (https://github.com/evaera)
+-- This file was originally sourced from Matter by evaera (https://github.com/evaera)
 -- License: Copyright (c) 2021 Eryn L. K., MIT License
 -- Source: https://github.com/matter-ecs/matter/blob/main/lib/topoRuntime.luau
+-- Modifications: Added strict types
+
+local Planck = require(script.Parent.Parent.Planck)
+type System<U...> = Planck.System<U...>
+
+type InternalSystem<U...> =
+	| Planck.SystemFn<U...>
+	| Planck.InitializerSystemFn<U...>
 
 --- @class Matter
 --- @ignore
 
-local stack = {}
+type Key = number | string
 
-local function newStackFrame(node)
+type FrameState = {
+	deltaTime: number,
+	generation: boolean,
+}
+
+export type SystemState = {
+	[Key]: {
+		cleanupCallback: ((storage: unknown) -> boolean)?,
+		storage: {
+			[any]: any,
+		},
+	},
+}
+
+type Node = {
+	frame: FrameState,
+	currentSystem: InternalSystem<...unknown>?,
+	system: SystemState,
+}
+
+type StackFrame = {
+	node: Node,
+	accessedKeys: {
+		[Key]: {
+			[Key]: boolean,
+		},
+	},
+}
+
+local stack: { StackFrame } = {}
+
+local function newStackFrame(node): StackFrame
 	return {
 		node = node,
 		accessedKeys = {},
@@ -41,7 +78,7 @@ local function cleanup()
 	end
 end
 
-local function start(node, fn)
+local function start(node: Node, fn: () -> ())
 	table.insert(stack, newStackFrame(node))
 	fn()
 	cleanup()
@@ -52,13 +89,13 @@ local function withinTopoContext()
 	return #stack ~= 0
 end
 
-local function useFrameState()
+local function useFrameState(): FrameState
 	return stack[#stack].node.frame
 end
 
-local function useCurrentSystem()
+local function useCurrentSystem(): InternalSystem<...unknown>?
 	if #stack == 0 then
-		return
+		return nil
 	end
 
 	return stack[#stack].node.currentSystem
@@ -132,7 +169,10 @@ end
 	@param discriminator? any -- A unique value to additionally key by
 	@param cleanupCallback (storage: {}) -> boolean? -- A function to run when the storage for this hook is cleaned up
 ]=]
-local function useHookState(discriminator, cleanupCallback): {}
+local function useHookState<T>(
+	discriminator: any?,
+	cleanupCallback: ((storage: T) -> boolean)?
+): T
 	local file, line = debug.info(3, "sl")
 	local fn = debug.info(2, "f")
 

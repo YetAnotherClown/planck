@@ -1,3 +1,5 @@
+--!nonstrict
+
 -- This file is sourced from Matter by evaera (https://github.com/evaera)
 -- License: Copyright (c) 2021 Eryn L. K., MIT License
 -- Source: https://github.com/matter-ecs/matter/blob/main/lib/debugger/formatTable.luau

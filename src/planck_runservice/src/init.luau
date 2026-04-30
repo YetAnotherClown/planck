@@ -1,6 +1,7 @@
 local RunService = game:GetService("RunService")
 
 local Planck = require(script.Parent.Planck)
+type Scheduler<U...> = Planck.Scheduler<U...>
 
 local Phase = Planck.Phase
 type Phase = Planck.Phase
@@ -8,111 +9,65 @@ type Phase = Planck.Phase
 local Pipeline = Planck.Pipeline
 type Pipeline = Planck.Pipeline
 
-type System<U...> = Planck.System<U...>
-type Scheduler<U...> = Planck.Scheduler<U...>
+local Phases = {
+	PreRender = Phase.new("PreRender"),
+	PreAnimation = Phase.new("PreAnimation"),
+	PreSimulation = Phase.new("PreSimulation"),
+	PostSimulation = Phase.new("PostSimulation"),
 
-type SystemInfo<U...> = {
-	name: string,
-	phase: Phase,
-	system: System<U...>,
+	First = Phase.new("First"),
+	PreUpdate = Phase.new("PreUpdate"),
+	Update = Phase.new("Update"),
+	PostUpdate = Phase.new("PostUpdate"),
+	Last = Phase.new("Last"),
 }
 
-type HookArgs<U...> = {
-	scheduler: Scheduler<U...>,
-	system: SystemInfo<U...>,
-	nextFn: System<U...>,
+-- stylua: ignore
+local Pipelines = {
+	Heartbeat = Pipeline.new("HeartbeatPipeline")
+		:insert(Phases.First)
+		:insert(Phases.PreUpdate)
+		:insert(Phases.Update)
+		:insert(Phases.PostUpdate)
+		:insert(Phases.Last),
+	PreRender = Pipeline.new("PreRenderPipeline")
+		:insert(Phases.PreRender),
+	PreAnimation = Pipeline.new("PreAnimationPipeline")
+		:insert(Phases.PreAnimation),
+	PreSimulation = Pipeline.new("PreSimulationPipeline")
+		:insert(Phases.PreSimulation),
+	PostSimulation = Pipeline.new("PostSimulationPipeline")
+		:insert(Phases.PostSimulation),
 }
 
-type SystemsAddRemove<U...> = {
-	scheduler: Scheduler<U...>,
-	system: SystemInfo<U...>,
-}
-
-type SystemsReplace<U...> = {
-	scheduler: Scheduler<U...>,
-	new: SystemInfo<U...>,
-	old: SystemInfo<U...>,
-}
-
-export type Phases = {
-	PreRender: Phase,
-	PreAnimation: Phase,
-	PreSimulation: Phase,
-	PostSimulation: Phase,
-
-	First: Phase,
-	PreUpdate: Phase,
-	Update: Phase,
-	PostUpdate: Phase,
-	Last: Phase,
-}
-
-export type Pipelines = {
-	Heartbeat: Pipeline,
-	PreRender: Pipeline,
-	PreAnimation: Pipeline,
-	PreSimulation: Pipeline,
-	PostSimulation: Pipeline,
-}
-
-local Phases = {} :: Phases
-
-Phases.PreRender = Phase.new("PreRender")
-Phases.PreAnimation = Phase.new("PreAnimation")
-Phases.PreSimulation = Phase.new("PreSimulation")
-Phases.PostSimulation = Phase.new("PostSimulation")
-
-Phases.First = Phase.new("First")
-Phases.PreUpdate = Phase.new("PreUpdate")
-Phases.Update = Phase.new("Update")
-Phases.PostUpdate = Phase.new("PostUpdate")
-Phases.Last = Phase.new("Last")
-
-local Pipelines: Pipelines = {} :: Pipelines
-
-Pipelines.Heartbeat = Pipeline.new("HeartbeatPipeline")
-	:insert(Phases.First)
-	:insert(Phases.PreUpdate)
-	:insert(Phases.Update)
-	:insert(Phases.PostUpdate)
-	:insert(Phases.Last)
-
-Pipelines.PreRender = Pipeline.new("PreRenderPipeline"):insert(Phases.PreRender)
-
-Pipelines.PreAnimation = Pipeline.new("PreAnimationPipeline")
-	:insert(Phases.PreAnimation)
-
-Pipelines.PreSimulation = Pipeline.new("PreSimulationPipeline")
-	:insert(Phases.PreSimulation)
-
-Pipelines.PostSimulation = Pipeline.new("PostSimulationPipeline")
-	:insert(Phases.PostSimulation)
+-- LUAU FUTURE: Remove this when they fix "Cannot iterate over a table without an indexer"
+type Pipelines = { [keyof<typeof(Pipelines)>]: Pipeline }
 
 local Plugin = {}
 Plugin.__index = Plugin
 
-function Plugin:build<U...>(scheduler: Scheduler<U...>)
-	for event, pipeline in pairs(Pipelines) do
+function Plugin.build(_: Plugin, scheduler: Scheduler<...unknown>)
+	for event, pipeline in Pipelines :: Pipelines do
 		scheduler:insert(pipeline, RunService, event)
 	end
 
-	local _scheduler = scheduler :: any
-	_scheduler._defaultDependencyGraph = (Pipelines.Heartbeat :: any).dependencyGraph
-	_scheduler._defaultPhase = Phases.Update
+	-- DependencyGraphs of Pipelines are typed as DependencyGraph<Phase> but
+	-- the Default DependencyGraph should be DependencyGraph<Phase | Pipeline>.
+	-- Since this type isn't public, casting to any is fine.
+	scheduler._defaultDependencyGraph =
+		Pipelines.Heartbeat.dependencyGraph :: any
+	scheduler._defaultPhase = Phases.Update
 end
 
-function Plugin.new()
-	return setmetatable({}, Plugin)
+function Plugin.new(): Plugin
+	local plugin = {}
+	return setmetatable(plugin, Plugin)
 end
 
-type Plugin<U...> = {
-	build: (self: Plugin<U...>, scheduler: Scheduler<U...>) -> (),
-	cleanup: ((self: Plugin<U...>) -> ())?,
-	new: () -> Plugin<U...>,
-}
+type Plugin = setmetatable<{}, typeof(Plugin)>
 
 return {
-	Plugin = (Plugin :: any) :: Plugin<...any>,
+	Plugin = Plugin,
 	Phases = Phases,
 	Pipelines = Pipelines,
 }

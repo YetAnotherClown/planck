@@ -1,8 +1,9 @@
 --!nonstrict
 
--- This file is sourced from Matter by evaera (https://github.com/evaera)
+-- This file was originally sourced from Matter by evaera (https://github.com/evaera)
 -- License: Copyright (c) 2021 Eryn L. K., MIT License
 -- Source: https://github.com/matter-ecs/matter/blob/main/lib/hooks/useEvent.luau
+-- Modifications: Added user-facing types
 
 local topoRuntime = require(script.Parent.Parent.topoRuntime)
 local Queue = require(script.Parent.Parent.Queue)
@@ -172,7 +173,10 @@ end
 	@param instance Instance | { [string]: CustomEvent } | CustomEvent -- The instance or the custom event, or a table that has the event you want to connect to
 	@param event string | RBXScriptSignal | CustomEvent -- The name of, or the actual event that you want to connect to
 ]=]
-local function useEvent(instance, event): () -> (number, ...any)
+local function useEvent(
+	instance: Instance | { [string]: CustomEvent } | CustomEvent,
+	event: string | RBXScriptSignal | CustomEvent
+): () -> (number, ...any)
 	assert(instance ~= nil, "Instance is nil")
 	assert(event ~= nil, "Event is nil")
 

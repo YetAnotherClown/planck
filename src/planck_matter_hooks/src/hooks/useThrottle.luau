@@ -43,7 +43,7 @@ end
 	@param discriminator? any -- A unique value to additionally key by
 	@return boolean -- returns true every x seconds, otherwise false
 ]=]
-local function useThrottle(seconds, discriminator)
+local function useThrottle(seconds: number, discriminator: any?): boolean
 	local storage = topoRuntime.useHookState(discriminator, cleanup)
 
 	if storage.time == nil or os.clock() - storage.time >= seconds then
