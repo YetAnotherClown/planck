@@ -4,6 +4,7 @@ type Scheduler<U...> = Planck.Scheduler<U...>
 type SystemInfo<U...> = Planck.SystemInfo<U...>
 type SystemHookContext = Planck.SystemHookContext
 type SystemReplaceContext = Planck.SystemReplaceContext
+type SystemEditedContext = Planck.SystemEditedContext
 type SystemCallContext = Planck.SystemCallContext
 
 type Phase = Planck.Phase
@@ -120,6 +121,26 @@ function Plugin.build(_: Plugin, scheduler: Scheduler<...unknown>)
 				})
 
 				systemToId[newSystem] = id
+			end
+		end
+	)
+
+	scheduler:addHook(
+		scheduler.Hooks.SystemEdited,
+		function(context: SystemEditedContext)
+			local systemInfo = context.system
+			local system = systemInfo.system
+			local newPhase = context.new
+			local oldPhase = context.old
+
+			if isStartup(oldPhase) then
+				startupScheduler:set_system_data(systemToId[system], {
+					phase = tostring(newPhase),
+				})
+			else
+				jabbyScheduler:set_system_data(systemToId[system], {
+					phase = tostring(newPhase),
+				})
 			end
 		end
 	)
