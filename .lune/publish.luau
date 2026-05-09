@@ -27,7 +27,7 @@ local DEPENDENCY_REGEXP = regex.new([[.+/(.+)@]])
 local WALLY_VERSION_REGEXP = regex.new([[version\s*=\s*"(.*)"]])
 local NPM_VERSION_REGEXP = regex.new([["version":\s*"(.*)"]])
 local SEMVER_REGEXP = regex.new(
-	[[(?m)^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$]]
+	[[^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$]]
 )
 
 local function exec(command: string)
@@ -43,7 +43,8 @@ local function publishPackage(
 	package: Package,
 	version: string,
 	dryRun: boolean,
-	otp: string
+	otp: string,
+	tag: string -- Prerelease tag
 )
 	stdio.write(
 		`{stdio.style("dim")}`
@@ -91,12 +92,15 @@ local function publishPackage(
 		end
 
 		stdio.write(result.stdout)
-		end
+	end
 
 	do
 		local result
 		if not dryRun then
-			result = exec(`npm publish ./{package.path}/ --otp={otp}`)
+			result = exec(
+				`npm publish ./{package.path}/ --otp={otp}`
+					.. `{if tag then ` --tag {tag}` else ""}`
+			)
 		else
 			result = exec(
 				`npm pack`
@@ -143,6 +147,15 @@ end
 local version = table.remove(args, 1)
 if not version or not SEMVER_REGEXP:isMatch(version) then
 	error(`"Invalid Semver: '{version}'`)
+end
+
+local prereleaseTag = "latest"
+local semverCaptures = SEMVER_REGEXP:captures(version)
+if semverCaptures then
+	local prerelease = semverCaptures:group("prerelease")
+	if prerelease then
+		prereleaseTag = string.split(prerelease.text, ".")[1]
+	end
 end
 
 local paths: { string } = #args ~= 0 and args or fs.readDir("src")
@@ -268,7 +281,7 @@ elseif not dryRun then
 end
 
 for i, name in orderedList do
-	publishPackage(nameToPackage[name], version, dryRun, otp)
+	publishPackage(nameToPackage[name], version, dryRun, otp, prereleaseTag)
 	if i ~= #packages then
 		task.wait(2)
 	end
