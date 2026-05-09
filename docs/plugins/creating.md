@@ -108,13 +108,23 @@ hook provides and how to use it.
 ### SystemInfo
 
 ```lua
+type SystemLog<E> = {
+	-- An Error object or message
+	e: E,
+	-- The string that will be printed
+	log: string,
+	-- The traceback as reported by the Scheduler
+	trace: string,
+}
+
 type SystemInfo<U...> {
 	system: (U...) -> (), -- The original system
 	run: (U...) -> (), -- The function to run
 	cleanup: ((U...) -> ())?, -- The function to run on cleanup
 	phase: Phase, -- What Phase this system belongs to
 	name: string, -- The name of the system
-	logs: { string }, -- The accumulated errors/warnings from this system
+	recentLogs: { [string]: boolean }, The logs that have been reported recently
+	logs: { SystemLog<unknown> }, -- The accumulated errors/warnings from this system
 	initialized: boolean, -- Whether or not this system has already been initialized
 }
 ```
@@ -232,7 +242,7 @@ scheduler:addHook(
 type Context<E, U...> = {
 	scheduler: Scheduler<U...>,
 	system: SystemInfo,
-	error: E?
+	error: SystemLog<E>?
 }
 ```
 
@@ -244,6 +254,12 @@ This context contains an `error` returned by the cleanup function
 if it errored. If integrating Planck into a debugger, and you have some
 way to display errors, you may want to utilize this hook.
 
+:::note
+When using this hook, keep in mind that `context.error.e` can be of any type.
+This could be a string, a custom Error Object, or anything. Logs from Planck
+will be a string, but system errors may return anything.
+:::
+
 ---
 
 ### SystemError
@@ -252,7 +268,7 @@ way to display errors, you may want to utilize this hook.
 type Context<E, U...> = {
 	scheduler: Scheduler<U...>,
 	system: SystemInfo,
-	error: E?
+	error: SystemLog<E>?
 }
 ```
 
@@ -263,6 +279,12 @@ separate hook that handles errors at cleanup.
 
 If integrating Planck into a debugger, and you have some way to display
 errors, you may want to utilize this hook.
+
+:::note
+When using this hook, keep in mind that `context.error.e` can be of any type.
+This could be a string, a custom Error Object, or anything. Logs from Planck
+will be a string, but system errors may return anything.
+:::
 
 ---
 

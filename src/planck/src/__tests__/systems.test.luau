@@ -5,6 +5,8 @@ local root = script.Parent.Parent
 local Phase = require(root.Phase)
 local Scheduler = require(root.Scheduler)
 
+type SystemErrorContext = Scheduler.SystemErrorContext
+
 local JestGlobals = require(ReplicatedStorage.DevPackages.JestGlobals)
 
 local describe = JestGlobals.describe
@@ -177,12 +179,14 @@ describe("systems", function()
 		local myScheduler =
 			Scheduler.new(1, 2, 3):insert(myPhase):addSystem(system, myPhase)
 
-		local err;
+		local err
 
-		(myScheduler :: any):_addHook(
-			(myScheduler :: any).Hooks.SystemError,
-			function(args)
-				err = args.error
+		myScheduler:addHook(
+			myScheduler.Hooks.SystemError,
+			function(context: SystemErrorContext)
+				if context.error then
+					err = context.error.log
+				end
 			end
 		)
 

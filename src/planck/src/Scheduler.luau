@@ -51,6 +51,15 @@ type PluginImpl = {
 
 type Plugin = setmetatable<{}, PluginImpl>
 
+type SystemLog<E> = {
+	-- An Error object or message
+	e: E,
+	-- The string that will be printed
+	log: string,
+	-- The traceback as reported by the Scheduler
+	trace: string,
+}
+
 export type SystemInfo<U...> = {
 	system: InternalSystem<U...>,
 	run: InternalSystem<U...>,
@@ -61,7 +70,7 @@ export type SystemInfo<U...> = {
 	lastTime: number?,
 	timeLastLogged: number?,
 	recentLogs: { [string]: boolean }?,
-	logs: { string },
+	logs: { SystemLog<unknown> },
 	phase: Phase,
 }
 
@@ -250,13 +259,13 @@ end
 
 export type SystemErrorContext = PartialHookContext & {
 	system: SystemInfo<...any>,
-	error: unknown?,
+	error: SystemLog<unknown>?,
 }
 
 function Scheduler._systemCleanup<E, U...>(
 	self: Scheduler<U...>,
 	systemInfo,
-	cleanupError: E?
+	cleanupError: SystemLog<E>?
 )
 	local context: SystemErrorContext = {
 		scheduler = self,
@@ -267,7 +276,11 @@ function Scheduler._systemCleanup<E, U...>(
 	callHooks(self._hooks["SystemCleanup"], context)
 end
 
-function Scheduler._systemError<E, U...>(self: Scheduler<U...>, systemInfo, err: E)
+function Scheduler._systemError<E, U...>(
+	self: Scheduler<U...>,
+	systemInfo,
+	err: SystemLog<E>
+)
 	local context: SystemErrorContext = {
 		scheduler = self,
 		system = systemInfo,
@@ -364,8 +377,35 @@ function Scheduler.getDeltaTime<U...>(self: Scheduler<U...>)
 	return self._systemInfo[systemFn].deltaTime or 0
 end
 
+function Scheduler._reportLog<E, U...>(
+	_: Scheduler<U...>,
+	systemInfo: SystemInfo<U...>,
+	log: SystemLog<E>,
+	-- A warning after the error providing context
+	context: string
+)
+	local recentLogs = systemInfo.recentLogs
+	local logMessage = log.log
+
+	assert(recentLogs)
+
+	if not recentLogs[logMessage] then
+		-- LUAU FUTURE: Inference bug
+		task.spawn<<(unknown, number)>>(error, logMessage, 0)
+		warn(
+			`Planck: {context},`
+				.. " "
+				.. `this error will be ignored for 10 seconds`
+		)
+		recentLogs[logMessage] = true
+	end
+end
+
 -- Inspiration from https://github.com/matter-ecs/matter <3
-function Scheduler._handleLogs<U...>(_: Scheduler<U...>, systemInfo: SystemInfo<U...>)
+function Scheduler._handleLogs<U...>(
+	self: Scheduler<U...>,
+	systemInfo: SystemInfo<U...>
+)
 	if not systemInfo.timeLastLogged then
 		systemInfo.timeLastLogged = os.clock()
 	end
@@ -387,15 +427,12 @@ function Scheduler._handleLogs<U...>(_: Scheduler<U...>, systemInfo: SystemInfo<
 
 	local name = systemInfo.name
 
-	for _, logMessage in systemInfo.logs do
-		if not systemInfo.recentLogs[logMessage] then
-			-- LUAU FUTURE: Inference bug
-			task.spawn<<(string, number)>>(error, logMessage, 0)
-			warn(
-				`Planck: Error occurred in system{string.len(name) > 0 and ` '{name}'` or ""}, this error will be ignored for 10 seconds`
-			)
-			systemInfo.recentLogs[logMessage] = true
-		end
+	for _, log in systemInfo.logs do
+		self:_reportLog(
+			systemInfo,
+			log,
+			`Error occurred in system{string.len(name) > 0 and ` '{name}'` or ""}`
+		)
 	end
 
 	table.clear(systemInfo.logs)
@@ -453,8 +490,12 @@ function Scheduler.runSystem<U...>(
 			coroutine.resume(self._thread, function()
 				success, errOrSys, cleanup = xpcall(function()
 					return systemInfo.run(table.unpack(self._vargs))
-				end, function(e: string)
-					return debug.traceback(e)
+				end, function(e)
+					return {
+						e = e,
+						log = debug.traceback(tostring(e)),
+						trace = debug.traceback(),
+					}
 				end)
 			end)
 
@@ -474,16 +515,16 @@ function Scheduler.runSystem<U...>(
 
 				local source, line = debug.info(self._thread, 1, "sl")
 				local errMessage = `{source}:{line}: System yielded`
+				local err = debug.traceback(self._thread, errMessage, 2)
 
-				table.insert(
-					systemInfo.logs,
-					debug.traceback(self._thread, errMessage, 2)
-				)
+				local log = {
+					e = err,
+					log = err,
+					trace = debug.traceback(self._thread, nil, 2),
+				}
 
-				self:_systemError(
-					systemInfo,
-					debug.traceback(self._thread, errMessage, 2)
-				)
+				table.insert(systemInfo.logs, log :: SystemLog<unknown>)
+				self:_systemError(systemInfo, log)
 				return
 			end
 
@@ -522,11 +563,19 @@ function Scheduler.runSystem<U...>(
 					end
 				end
 
-				local err = `System '{systemInfo.name}' initializer returned invalid type. `
+				local errMessage = `System '{systemInfo.name}' initializer returned invalid type. `
 					.. "Expected: function, {system?, cleanup?}, or (function, function). "
 					.. `Got: {typeof(errOrSys)}, {typeof(cleanup)}`
-				table.insert(systemInfo.logs, err)
-				self:_systemError(systemInfo, err)
+
+				local err = debug.traceback(errMessage)
+				local log = {
+					e = err,
+					log = err,
+					trace = debug.traceback(),
+				}
+
+				table.insert(systemInfo.logs, log :: SystemLog<unknown>)
+				self:_systemError(systemInfo, log)
 				systemInfo.initialized = true
 			end
 		end
@@ -548,18 +597,17 @@ function Scheduler.runSystem<U...>(
 	end
 
 	-- LUAU FUTURE: Better types for pcalls
-	local success, err: string? = pcall(outer :: any)
-	if not success and not recentLogs[err] then
-		-- LUAU FUTURE: Inference bug
-		task.spawn<<(string?, number)>>(error, err, 0)
-		warn(
-			`Planck: Error occurred while running hooks, this error will be ignored for 10 seconds`
-		)
-		self:_systemError(
-			systemInfo,
-			`Error occurred while running hooks: {err}`
-		)
-		recentLogs[err] = true
+	local success, err = xpcall(outer :: any, function(e)
+		return {
+			e = e,
+			log = debug.traceback(`Error occurred while running hooks: {e}`),
+			trace = debug.traceback(),
+		}
+	end)
+
+	if not success then
+		self:_systemError(systemInfo, err)
+		self:_reportLog(systemInfo, err, `Error occurred while running hooks`)
 	end
 
 	if didYield then
@@ -1157,22 +1205,24 @@ function Scheduler.removeSystem<U...>(self: Scheduler<U...>, system: System<U...
 	)
 
 	if systemInfo.cleanup then
-		-- LUAU FUTURE: Better types for pcalls
-		local success: boolean, err: string? = (pcall :: any)(
-			systemInfo.cleanup,
-			table.unpack(self._vargs)
-		)
+		local success: boolean, err: SystemLog<unknown> = xpcall<<unknown, (nil), (
+			SystemLog<unknown>
+		)>>(systemInfo.cleanup, function(e)
+			local errMessage =
+				`Cleanup failed for system '{systemInfo.name}': {e}`
+
+			return {
+				e = e,
+				log = debug.traceback(errMessage),
+				trace = debug.traceback(),
+			}
+		end, table.unpack(self._vargs))
 
 		if success then
 			self:_systemCleanup(systemInfo, nil)
 		else
-			local errMsg = string.format(
-				"Cleanup failed for system '%s': %s",
-				systemInfo.name,
-				tostring(err)
-			)
-			self:_systemError(systemInfo, errMsg)
-			self:_systemCleanup(systemInfo, errMsg)
+			self:_systemError(systemInfo, err)
+			self:_systemCleanup(systemInfo, err)
 		end
 	end
 
@@ -1227,21 +1277,25 @@ function Scheduler.replaceSystem<U...>(
 	)
 
 	if oldSystemInfo.cleanup then
-		-- LUAU FUTURE: Better types for pcalls
-		local success: boolean, err: string? = (pcall :: any)(
-			oldSystemInfo.cleanup,
-			table.unpack(self._vargs)
-		)
+		-- LUAU FUTURE: Better types for xpcalls
+		local success: boolean, err: SystemLog<unknown> = xpcall<<unknown, (nil), (
+			SystemLog<unknown>
+		)>>(oldSystemInfo.cleanup, function(e)
+			local errMessage =
+				`Cleanup failed for system '{oldSystemInfo.name}': {e}`
+
+			return {
+				e = e,
+				log = debug.traceback(errMessage),
+				trace = debug.traceback(),
+			}
+		end, table.unpack(self._vargs))
+
 		if success then
 			self:_systemCleanup(oldSystemInfo, nil)
 		else
-			local errMsg = string.format(
-				"Cleanup failed for system '%s': %s",
-				oldSystemInfo.name,
-				tostring(err)
-			)
-			self:_systemError(oldSystemInfo, errMsg)
-			self:_systemCleanup(oldSystemInfo, errMsg)
+			self:_systemError(oldSystemInfo, err)
+			self:_systemCleanup(oldSystemInfo, err)
 		end
 	end
 
