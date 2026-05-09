@@ -1,6 +1,6 @@
 {
 	"name": "@rbxts/planck-jabby",
-	"version": "0.3.0-alpha.1",
+	"version": "0.3.0-rc.1",
 	"description": "A Plugin for Planck, adding support for the Jabby debugger.",
 	"main": "src",
 	"repository": {
