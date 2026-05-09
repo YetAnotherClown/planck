@@ -109,6 +109,7 @@ type Hooks = {
 	SystemAdd: Hook<(context: SystemHookContext) -> ()>,
 	SystemRemove: Hook<(context: SystemHookContext) -> ()>,
 	SystemReplace: Hook<(context: SystemReplaceContext) -> ()>,
+	SystemEdited: Hook<(context: SystemEditedContext) -> ()>,
 	SystemCleanup: Hook<(context: SystemErrorContext) -> ()>,
 	SystemError: Hook<(context: SystemErrorContext) -> ()>,
 	SystemTriedRun: Hook<(context: SystemHookContext) -> ()>,
@@ -131,6 +132,7 @@ Scheduler.Hooks = (
 		SystemAdd = "SystemAdd",
 		SystemRemove = "SystemRemove",
 		SystemReplace = "SystemReplace",
+		SystemEdited = "SystemEdited",
 		SystemCleanup = "SystemCleanup",
 		SystemError = "SystemError",
 		SystemTriedRun = "SystemTriedRun",
@@ -223,6 +225,27 @@ function Scheduler._systemReplace<U...>(
 	}
 
 	callHooks(self._hooks["SystemReplace"], context)
+end
+
+export type SystemEditedContext = SystemHookContext & {
+	old: Phase,
+	new: Phase,
+}
+
+function Scheduler._systemEdited<U...>(
+	self: Scheduler<U...>,
+	systemInfo: SystemInfo<U...>,
+	old: Phase,
+	new: Phase
+)
+	local context: SystemEditedContext = {
+		scheduler = self,
+		system = systemInfo :: any,
+		new = new,
+		old = old,
+	}
+
+	callHooks(self._hooks["SystemEdited"], context)
 end
 
 export type SystemErrorContext = PartialHookContext & {
@@ -1056,7 +1079,8 @@ function Scheduler.editSystem<U...>(
 		"Phase never initialized before using Scheduler:editSystem(_, phase)"
 	)
 
-	local systems = self._phaseToSystems[systemInfo.phase]
+	local oldPhase = systemInfo.phase
+	local systems = self._phaseToSystems[oldPhase]
 
 	local index = table.find(systems, systemFn :: InternalSystem<...any>)
 	assert(index, "Unable to find system within phase")
@@ -1072,6 +1096,8 @@ function Scheduler.editSystem<U...>(
 	)
 
 	systemInfo.phase = newPhase
+	self:_systemEdited(systemInfo :: SystemInfo<U...>, oldPhase, newPhase)
+
 	return self
 end
 

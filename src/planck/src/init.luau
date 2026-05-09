@@ -19,6 +19,7 @@ export type SystemInfo<U...> = Scheduler.SystemInfo<U...>
 
 export type SystemHookContext = Scheduler.SystemHookContext
 export type SystemReplaceContext = Scheduler.SystemReplaceContext
+export type SystemEditedContext = Scheduler.SystemEditedContext
 export type SystemErrorContext = Scheduler.SystemErrorContext
 export type SystemCallContext = Scheduler.SystemCallContext
 export type PhaseContext = Scheduler.PhaseContext
