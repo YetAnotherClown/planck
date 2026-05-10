@@ -11,7 +11,7 @@ repository = "https://github.com/yetanotherclown/planck"
 private = true
 
 [dependencies]
-Jabby = "alicesaidhi/jabby@0.2.3"
+Jabby = "alicesaidhi/jabby@0.5.1"
 
 [dev-dependencies]
 Jest = "jsdotlua/jest@3.10.0"
