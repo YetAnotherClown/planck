@@ -1,6 +1,6 @@
 {
   "name": "@rbxts/planck-jabby",
-  "version": "0.3.0-rc.1",
+  "version": "0.3.0-rc.2",
   "description": "A Plugin for Planck, adding support for the Jabby debugger.",
   "main": "src",
   "repository": {
@@ -36,7 +36,7 @@
     "typescript": "^5.4.2"
   },
   "dependencies": {
-    "@rbxts/planck": "^0.2.0-rc.1",
+    "@rbxts/planck": "^0.3.0-rc.2",
     "@rbxts/jabby": "^0.5.1"
   }
 }
